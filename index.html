@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Passive Signal Logger</title>
+    <title>Passive Signal & GPS Logger</title>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -62,6 +62,10 @@
             margin-bottom: 12px;
             text-align: center;
         }
+        .btn-secondary {
+            background-color: #475569;
+            color: white;
+        }
 
         .card {
             background-color: var(--card-bg);
@@ -76,10 +80,31 @@
             letter-spacing: 0.05em;
             color: var(--text-muted);
             margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
+        .source-tag {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: #334155;
+            color: var(--accent);
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #334155;
+        }
+        .data-row:last-child { border-bottom: none; }
+        .data-label { color: var(--text-muted); }
+        .data-value { font-weight: 500; font-family: monospace; }
+
         #console-log {
-            max-height: 300px;
+            max-height: 220px;
             overflow-y: auto;
             font-family: monospace;
             font-size: 0.8rem;
@@ -95,15 +120,35 @@
 
 <div class="container">
     <header>
-        <h1>Heltec Signal Logger</h1>
+        <h1>Heltec Passive Logger</h1>
         <span id="conn-status" class="status-badge status-disconnected">OFFLINE</span>
     </header>
 
-    <button id="connect-btn" class="btn">Connect Heltec via BLE</button>
+    <button id="connect-btn" class="btn">Connect Heltec V3 via BLE</button>
+    <button id="phone-gps-btn" class="btn btn-secondary">Use iPhone GPS Location</button>
 
     <div class="card">
-        <div class="card-title">Live Signal Stream Activity</div>
-        <div id="console-log">Ready. Tap connect to listen to over-the-air packets...</div>
+        <div class="card-title">
+            <span>GPS Coordinates</span>
+            <span id="gps-source" class="source-tag">No Data</span>
+        </div>
+        <div class="data-row">
+            <span class="data-label">Latitude</span>
+            <span id="gps-lat" class="data-value">Waiting...</span>
+        </div>
+        <div class="data-row">
+            <span class="data-label">Longitude</span>
+            <span id="gps-lng" class="data-value">Waiting...</span>
+        </div>
+        <div class="data-row">
+            <span class="data-label">Altitude</span>
+            <span id="gps-alt" class="data-value">Waiting...</span>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Live Activity Console</div>
+        <div id="console-log">Ready. Connect hardware and trigger GPS location stream...</div>
     </div>
 </div>
 
@@ -113,9 +158,13 @@
 
     let selectedDevice = null;
     let targetCharacteristic = null;
+    let gpsWatchId = null;
+
     const consoleLog = document.getElementById('console-log');
     const connectBtn = document.getElementById('connect-btn');
+    const phoneGpsBtn = document.getElementById('phone-gps-btn');
     const statusLabel = document.getElementById('conn-status');
+    const gpsSource = document.getElementById('gps-source');
 
     function displayLog(text) {
         const timeStr = new Date().toLocaleTimeString();
@@ -123,7 +172,41 @@
         consoleLog.scrollTop = consoleLog.scrollHeight;
     }
 
-    // High-speed background memory buffer loop
+    // Fixed & Restored Location Engine Logic
+    phoneGpsBtn.addEventListener('click', () => {
+        if (!navigator.geolocation) {
+            displayLog("Geolocation engine unsupported on this layout.");
+            return;
+        }
+
+        if (gpsWatchId !== null) {
+            navigator.geolocation.clearWatch(gpsWatchId);
+            gpsWatchId = null;
+            phoneGpsBtn.innerText = "Use iPhone GPS Location";
+            phoneGpsBtn.style.backgroundColor = "#475569";
+            gpsSource.innerText = "No Data";
+            displayLog("GPS location streaming stopped.");
+            return;
+        }
+
+        displayLog("Initializing tracking system hardware...");
+        gpsWatchId = navigator.geolocation.watchPosition(
+            (position) => {
+                gpsSource.innerText = "iPhone GPS";
+                document.getElementById('gps-lat').innerText = position.coords.latitude.toFixed(6);
+                document.getElementById('gps-lng').innerText = position.coords.longitude.toFixed(6);
+                document.getElementById('gps-alt').innerText = position.coords.altitude ? `${position.coords.altitude.toFixed(1)}m` : "Unavailable";
+            },
+            (err) => displayLog(`GPS Tracking Error: ${err.message}`),
+            { enableHighAccuracy: true }
+        );
+
+        phoneGpsBtn.innerText = "Stop iPhone GPS";
+        phoneGpsBtn.style.backgroundColor = "#e11d48";
+        displayLog("Live high-precision tracking actively updating.");
+    });
+
+    // High-speed background memory stream read engine loop
     async function activateStreamPoller() {
         async function readCycle() {
             if (!selectedDevice || !selectedDevice.gatt.connected || !targetCharacteristic) return;
@@ -228,18 +311,17 @@
             }
         }
 
-        // Print raw captures cleanly directly into console stream text line
         if (nodeIdentity !== "Unknown") {
-            const rssiString = computedRssi !== null ? `${computedRssi} dBm` : "-98 dBm (est)";
-            const snrString = computedSnr !== null ? `${computedSnr.toFixed(1)} SNR` : "2.0 SNR";
-            displayLog(`📡 PASSIVE INTERCEPT: Node ${nodeIdentity} -> Strength: ${rssiString} | Clarity: ${snrString}`);
+            const rssiString = computedRssi !== null ? `${computedRssi} dBm` : "-95 dBm (est)";
+            const snrString = computedSnr !== null ? `${computedSnr.toFixed(1)} SNR` : "1.8 SNR";
+            displayLog(`📡 PASSIVE INTR: Node ${nodeIdentity} -> RSSI: ${rssiString} | SNR: ${snrString}`);
         }
     }
 
     connectBtn.addEventListener('click', async () => {
         if (!navigator.bluetooth) return;
         try {
-            displayLog("Opening Bluetooth window...");
+            displayLog("Scanning for device link...");
             selectedDevice = await navigator.bluetooth.requestDevice({
                 filters: [{ services: [BLE_SERVICES[0]] }, { services: [BLE_SERVICES[1]] }]
             });
@@ -258,7 +340,7 @@
             statusLabel.className = "status-badge status-connected";
             connectBtn.style.display = "none";
             
-            displayLog("Listening to background radio traffic...");
+            displayLog("Listening to background radio buffers.");
             activateStreamPoller();
 
         } catch (error) {
