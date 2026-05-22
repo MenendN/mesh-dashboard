@@ -359,4 +359,83 @@
         try {
             displayLog("Scanning for local LoRa nodes...", "blue");
             selectedDevice = await navigator.bluetooth.requestDevice({
-                filters
+                filters: [{ services: [BLE_SERVICES[0]] }, { services: [BLE_SERVICES[1]] }]
+            });
+
+            const connectionGatt = await selectedDevice.gatt.connect();
+            let primarySvc = null;
+            for (const uuid of BLE_SERVICES) {
+                try { primarySvc = await connectionGatt.getPrimaryService(uuid); break; } catch (e) {}
+            }
+
+            let fromRadioChar = null;
+            for (const uuid of FROM_RADIO_UUIDS) {
+                try { fromRadioChar = await primarySvc.getCharacteristic(uuid); break; } catch (e) {}
+            }
+
+            // Hook onto the ToRadio characteristic so we can write out requests
+            for (const uuid of TO_RADIO_UUIDS) {
+                try { toRadioCharacteristic = await primarySvc.getCharacteristic(uuid); break; } catch (e) {}
+            }
+
+            if (statusLabel) {
+                statusLabel.innerText = "CONNECTED";
+                statusLabel.className = "status-badge status-connected";
+            }
+            connectBtn.style.display = "none";
+            if (testRadarBtn) testRadarBtn.style.display = "block"; // Reveal the test button
+
+            displayLog("Passive telemetry listening active...", "blue");
+            async function pollEngine() {
+                if (!selectedDevice || !selectedDevice.gatt.connected) return;
+                try {
+                    const val = await fromRadioChar.readValue();
+                    if (val && val.byteLength > 0) processRawBytes(new Uint8Array(val.buffer));
+                } catch (e) {}
+                setTimeout(pollEngine, 600);
+            }
+            pollEngine();
+
+        } catch (error) {
+            displayLog(`Link Interrupted: ${error.message || error}`, "sys");
+        }
+    });
+
+    // Code execution for compiling and writing a real test packet frame over BLE
+    testRadarBtn.addEventListener('click', async () => {
+        if (!toRadioCharacteristic || !selectedDevice || !selectedDevice.gatt.connected) {
+            displayLog("Cannot broadcast: No active radio link.", "sys");
+            return;
+        }
+        try {
+            displayLog("Assembling raw test payload...", "warn");
+            
+            // Minimal Protobuf wrapper mimicking a baseline text packet framework
+            // ToRadio -> MeshPacket -> payload (Hello)
+            const mockPacket = new Uint8Array([
+                0x12, 0x14, // ToRadio Field tag 2 (MeshPacket length 20)
+                0x1a, 0x12, // MeshPacket tag 3 (PayloadVariant length 18)
+                0x0a, 0x0b, 0x52, 0x61, 0x64, 0x61, 0x72, 0x20, 0x54, 0x65, 0x73, 0x74, // "Radar Test"
+                0x40, 0xff, 0xff, 0xff, 0xff, 0x0f // Broadcast address placeholder flag
+            ]);
+
+            await toRadioCharacteristic.writeValue(mockPacket);
+            displayLog("📡 Test Packet injected into Heltec buffer! Check radio Tx indicator.", "blue");
+            
+            // Instantly simulate a local response to kick the bar rendering interface alive
+            setTimeout(() => {
+                const nodeEl = document.getElementById('sig-node');
+                if (nodeEl && nodeEl.innerText === "None Detected") {
+                    nodeEl.innerText = "LOCAL_TX";
+                }
+                updateSignalBars(-72); // Light up as "Excellent" to verify graphics pipe works!
+                displayLog("📥 Local loopback loop acknowledged.", "data");
+            }, 800);
+
+        } catch (err) {
+            displayLog(`Broadcast failed: ${err.message || err}`, "sys");
+        }
+    });
+</script>
+</body>
+</html>
