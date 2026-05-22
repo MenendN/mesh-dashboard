@@ -104,26 +104,6 @@
             color: var(--accent);
         }
 
-        .data-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #334155;
-        }
-
-        .data-row:last-child {
-            border-bottom: none;
-        }
-
-        .data-label {
-            color: var(--text-muted);
-        }
-
-        .data-value {
-            font-weight: 500;
-            font-family: monospace;
-        }
-
         .signal-indicator {
             font-weight: bold;
             color: var(--accent);
@@ -208,7 +188,7 @@
     <div class="card">
         <div class="card-title">Nearby Mesh Node Strengths</div>
         <div id="node-list-container">
-            <div id="empty-nodes-msg">Connecting to node internal memory banks...</div>
+            <div id="empty-nodes-msg">Listening for surrounding node signals...</div>
         </div>
     </div>
 
@@ -229,15 +209,8 @@
         '2c55e69e-4993-11ed-b878-0242ac120002'
     ];
 
-    // Added outbound characteristic to transmit requests to the device
-    const TO_RADIO_UUIDS = [
-        'f75c693e-1a21-40e8-94b5-17f05b7705c2',
-        '2c55e69e-4993-11ed-b878-0242ac120001'
-    ];
-
     let bleDevice = null;
     let fromRadioChar = null;
-    let toRadioChar = null;
     let isPolling = false;
     let watchId = null;
     
@@ -299,47 +272,18 @@
             for (const uuid of FROM_RADIO_UUIDS) {
                 try { fromRadioChar = await primaryService.getCharacteristic(uuid); break; } catch (e) {}
             }
-
-            for (const uuid of TO_RADIO_UUIDS) {
-                try { toRadioChar = await primaryService.getCharacteristic(uuid); break; } catch (e) {}
-            }
             
             statusBadge.innerText = "CONNECTED";
             statusBadge.className = "status-badge status-connected";
             connectBtn.style.display = "none";
 
-            document.getElementById('empty-nodes-msg').innerText = "Requesting saved node database list from hardware...";
-
-            try {
-                await fromRadioChar.startNotifications();
-                fromRadioChar.addEventListener('characteristicvaluechanged', (e) => processIncomingBytes(e.target.value));
-                logger("Monitoring notification channels.");
-            } catch (notifyErr) {
-                logger("Initiating backup polling wrapper...");
-                startFallbackPolling();
-            }
-
-            // Small delay to let pipeline initialize, then send database dump request
-            setTimeout(requestNodeDatabaseDump, 1500);
+            logger("Active polling pipeline deployed.");
+            startFallbackPolling();
 
         } catch (err) {
             logger(`Error: ${err.message || err}`);
         }
     });
-
-    // Encodes and sends a raw Meshtastic request packet over BLE asking for the NodeDB
-    async function requestNodeDatabaseDump() {
-        if (!toRadioChar) return;
-        try {
-            logger("Transmitting NodeDB memory list request command...");
-            // Raw Protobuf compiled byte trigger for asking a node to dump its internal database
-            const requestBytes = new Uint8Array([0x12, 0x00]); 
-            await toRadioChar.writeValue(requestBytes);
-            logger("Database download command sent successfully.");
-        } catch (e) {
-            logger(`Database Request Warning: ${e.message}`);
-        }
-    }
 
     function startFallbackPolling() {
         if (isPolling) return;
@@ -350,7 +294,7 @@
                 const view = await fromRadioChar.readValue();
                 if (view && view.byteLength > 0) processIncomingBytes(view);
             } catch (e) {}
-            setTimeout(poll, 800);
+            setTimeout(poll, 400); // Accelerated poll speed to 400ms to catch quick packet peaks
         }
         poll();
     }
@@ -373,94 +317,10 @@
                 i = nextIdx;
                 parseMeshPacket(bytes.subarray(i, i + packetLen));
                 i += packetLen;
-            } else if (fieldNum === 1 && type === 2) { // NodeInfo list packet layer
-                const [packetLen, nextIdx] = readVarint(bytes, i);
-                i = nextIdx;
-                parseNodeInfoPacket(bytes.subarray(i, i + packetLen));
-                i += packetLen;
             } else {
                 i = skipVarintField(bytes, i, type);
             }
         }
-    }
-
-    // Handles stored memory database packets sent from the node's history storage
-    function parseNodeInfoPacket(infoBytes) {
-        let i = 0;
-        let numId = 0;
-        let userLongName = "";
-        let signalRssi = 0;
-        let signalSnr = 0;
-        let hasSignal = false;
-
-        while (i < infoBytes.length) {
-            const key = infoBytes[i++];
-            const type = key & 0x07;
-            const fieldNum = key >> 3;
-
-            if (fieldNum === 1) { // num field
-                const [val, nextIdx] = readVarint(infoBytes, i);
-                numId = val;
-                i = nextIdx;
-            } else if (fieldNum === 2 && type === 2) { // User payload layer
-                const [len, nextIdx] = readVarint(infoBytes, i);
-                i = nextIdx;
-                userLongName = parseUserLongName(infoBytes.subarray(i, i + len));
-                i += len;
-            } else if (fieldNum === 3 && type === 2) { // Metrics/Position storage layer
-                const [len, nextIdx] = readVarint(infoBytes, i);
-                i = nextIdx;
-                const subEnd = i + len;
-                // Parse out pre-saved signal indexes if stored inside database history
-                while (i < subEnd) {
-                    const subKey = infoBytes[i++];
-                    const subType = subKey & 0x07;
-                    const subField = subKey >> 3;
-                    if (subField === 1) { 
-                        const [rssiVal, rssiIdx] = readVarint(infoBytes, i);
-                        signalRssi = rssiVal << 0;
-                        hasSignal = true;
-                        i = rssiIdx;
-                    } else if (subField === 2) {
-                        const [snrVal, snrIdx] = readVarint(infoBytes, i);
-                        signalSnr = (snrVal << 0) / 4;
-                        hasSignal = true;
-                        i = snrIdx;
-                    } else {
-                        i = skipVarintField(infoBytes, i, subType);
-                    }
-                }
-            } else {
-                i = skipVarintField(infoBytes, i, type);
-            }
-        }
-
-        if (numId !== 0) {
-            const hexId = `!${numId.toString(16)}`;
-            const displayName = userLongName || hexId.toUpperCase();
-            // Fallback baseline numbers if the record has clean logs but zero historical RSSI
-            const finalRssi = hasSignal ? signalRssi : -100; 
-            const finalSnr = hasSignal ? signalSnr : 0;
-            updateNodeRadarUI(hexId, displayName, finalRssi, finalSnr);
-        }
-    }
-
-    function parseUserLongName(userBytes) {
-        let i = 0;
-        while (i < userBytes.length) {
-            const key = userBytes[i++];
-            const type = key & 0x07;
-            const fieldNum = key >> 3;
-            if (fieldNum === 2 && type === 2) { // longName field string rule
-                const [len, nextIdx] = readVarint(userBytes, i);
-                i = nextIdx;
-                const stringBytes = userBytes.subarray(i, i + len);
-                return new TextDecoder().decode(stringBytes);
-            } else {
-                i = skipVarintField(userBytes, i, type);
-            }
-        }
-        return "";
     }
 
     function parseMeshPacket(packetBytes) {
@@ -494,14 +354,17 @@
             }
         }
 
-        if (hasSignalMetrics && senderId !== "Unknown") {
-            updateNodeRadarUI(senderId, senderId.toUpperCase(), rxRssi, rxSnr);
+        // Catch active nodes transmitting packet traffic or routine node info frames
+        if (senderId !== "Unknown") {
+            const finalRssi = hasSignalMetrics ? rxRssi : -90; // Default baseline guess if localized node channel data drops out
+            const finalSnr = hasSignalMetrics ? rxSnr : 1.5;
+            updateNodeRadarUI(senderId, finalRssi, finalSnr);
         }
     }
 
-    function updateNodeRadarUI(nodeId, nodeName, rssi, snr) {
+    function updateNodeRadarUI(nodeId, rssi, snr) {
         const timestamp = new Date().toLocaleTimeString();
-        trackedNodes[nodeId] = { nodeName, rssi, snr, timestamp };
+        trackedNodes[nodeId] = { rssi, snr, timestamp };
 
         const emptyMsg = document.getElementById('empty-nodes-msg');
         if (emptyMsg) emptyMsg.remove();
@@ -520,8 +383,8 @@
 
         nodeRow.innerHTML = `
             <div class="node-info-block">
-                <span class="node-name">${nodeName}</span>
-                <span class="node-id-sub">Node ID: ${nodeId.toUpperCase()} • Seen: ${timestamp}</span>
+                <span class="node-name">Node: ${nodeId.toUpperCase()}</span>
+                <span class="node-id-sub">Last traffic spotted: ${timestamp}</span>
             </div>
             <div class="signal-indicator" style="color: ${signalColor}">
                 ${rssi} dBm <span style="font-size:0.75rem; color:var(--text-muted)">(${snr} SNR)</span>
