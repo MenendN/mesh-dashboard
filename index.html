@@ -173,24 +173,24 @@
 </div>
 
 <script>
-    // Dual standard arrays to cross-examine Meshtastic firmware shifts
     const SERVICE_UUIDS = [
-        'cb9b240e-9e5b-4699-953b-2faac16a17f1', // Standard App Service
-        '6ba1b218-15a8-461f-9fa8-5dcae273eafd'  // Alternate baseline Service
+        'cb9b240e-9e5b-4699-953b-2faac16a17f1',
+        '6ba1b218-15a8-461f-9fa8-5dcae273eafd'
     ];
 
     const FROM_RADIO_UUIDS = [
-        'f75c693e-1a21-40e8-94b5-17f05b7705c3', // Standard Notify Characteristic
-        '2c55e69e-4993-11ed-b878-0242ac120002'  // Legacy variant pointer
+        'f75c693e-1a21-40e8-94b5-17f05b7705c3',
+        '2c55e69e-4993-11ed-b878-0242ac120002'
     ];
 
     const FROM_NUM_UUIDS = [
-        'e0b2413e-ae8a-4cf3-a759-b1d619b0aa1f', // Standard counter track 
-        'ed9da18c-a800-4f66-a670-aa7547e34453'  // Legacy variant track
+        'e0b2413e-ae8a-4cf3-a759-b1d619b0aa1f',
+        'ed9da18c-a800-4f66-a670-aa7547e34453'
     ];
 
     let bleDevice = null;
     let fromRadioChar = null;
+    let isPolling = false;
 
     const connectBtn = document.getElementById('connect-btn');
     const statusBadge = document.getElementById('connection-status');
@@ -230,37 +230,40 @@
                 } catch (e) { continue; }
             }
 
-            if (!primaryService) throw new Error("Compatible Meshtastic GATT service architecture not found.");
+            if (!primaryService) throw new Error("GATT service layout missing.");
 
-            // Loop and hook FromRadio
             logger("Probing notify structures...");
             for (const uuid of FROM_RADIO_UUIDS) {
                 try {
                     fromRadioChar = await primaryService.getCharacteristic(uuid);
-                    logger(`Mapped payload pipeline: ${uuid.substring(0,8)}...`);
+                    logger(`Mapped pipeline: ${uuid.substring(0,8)}...`);
                     break;
                 } catch (e) { continue; }
             }
 
-            if (!fromRadioChar) throw new Error("FromRadio pipeline lookup returned completely undefined.");
+            if (!fromRadioChar) throw new Error("FromRadio characteristic lookup failed.");
 
-            // Attempt structural notification pointers hooks
             for (const uuid of FROM_NUM_UUIDS) {
                 try {
                     const numChar = await primaryService.getCharacteristic(uuid);
                     await numChar.startNotifications();
-                    logger(`Synchronized sequence index.`);
                     break;
                 } catch (e) { continue; }
             }
             
-            await fromRadioChar.startNotifications();
-            fromRadioChar.addEventListener('characteristicvaluechanged', handleRadioData);
-
             statusBadge.innerText = "CONNECTED";
             statusBadge.className = "status-badge status-connected";
             connectBtn.style.display = "none";
-            logger("Handshake finalized. Standing by for mesh frames...");
+
+            try {
+                logger("Attempting notification subscription...");
+                await fromRadioChar.startNotifications();
+                fromRadioChar.addEventListener('characteristicvaluechanged', handleRadioData);
+                logger("Streaming active via direct notifications.");
+            } catch (notifyErr) {
+                logger("Notify rejected by firmware. Deploying safe polling engine loop instead...");
+                startFallbackPolling();
+            }
 
         } catch (err) {
             logger(`Error: ${err.message || err}`);
@@ -268,8 +271,33 @@
         }
     });
 
+    function startFallbackPolling() {
+        if (isPolling) return;
+        isPolling = true;
+        
+        async function poll() {
+            if (!bleDevice || !bleDevice.gatt.connected || !fromRadioChar) {
+                isPolling = false;
+                return;
+            }
+            try {
+                const view = await fromRadioChar.readValue();
+                if (view && view.byteLength > 0) {
+                    processIncomingBytes(view);
+                }
+            } catch (e) {
+                // Silently swallow empty buffer cycles to prevent log pollution
+            }
+            setTimeout(poll, 800); // Check pipeline buffer every 800ms
+        }
+        poll();
+    }
+
     function handleRadioData(event) {
-        const view = event.target.value;
+        processIncomingBytes(event.target.value);
+    }
+
+    function processIncomingBytes(view) {
         if (!view || view.byteLength === 0) return;
 
         const bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
