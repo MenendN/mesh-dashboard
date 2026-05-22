@@ -3,57 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mesh Passive Radar</title>
+    <title>Mesh Radar</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
-        :root { --bg-color: #0f172a; --card-bg: #1e293b; --accent: #38bdf8; --text-main: #f8fafc; --text-muted: #94a3b8; --success: #22c55e; --error: #ef4444; --warning: #facc15; }
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 16px; }
-        .container { max-width: 600px; margin: 0 auto; }
-        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid #334155; }
-        .status-badge { font-size: 0.85rem; font-weight: bold; padding: 4px 8px; border-radius: 6px; background-color: var(--error); color: white; }
-        .status-connected { background-color: var(--success); }
-        .btn { display: block; width: 100%; background-color: var(--accent); color: #000; font-weight: bold; border: none; padding: 14px; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-bottom: 12px; text-align: center; }
-        .btn-test { background-color: var(--warning); color: #000; }
-        .card { background-color: var(--card-bg); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-        .card-title { font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; }
-        .data-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #334155; }
-        #console-log { height: 140px; overflow-y: auto; font-family: monospace; font-size: 0.8rem; background: #020617; padding: 12px; border-radius: 6px; }
+        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --warn: #facc15; --text: #f8fafc; }
+        body { font-family: -apple-system, sans-serif; background-color: var(--bg); color: var(--text); padding: 20px; }
+        .btn { display: block; width: 100%; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
+        #connect-btn { background-color: var(--accent); }
+        #test-btn { background-color: var(--warn); }
+        .card { background: var(--card); padding: 15px; border-radius: 12px; margin-top: 15px; }
+        #log { font-family: monospace; font-size: 0.8rem; background: #000; padding: 10px; height: 150px; overflow-y: auto; }
     </style>
 </head>
 <body>
-<div class="container">
-    <header><h1>Heltec Passive Radar</h1><span id="conn-status" class="status-badge">OFFLINE</span></header>
     <button id="connect-btn" class="btn">Connect Heltec V3 via BLE</button>
-    <button id="test-radar-btn" class="btn btn-test">📡 Broadcast Radar Test Packet</button>
-    <div class="card"><div class="card-title">GPS Coordinates</div><div class="data-row"><span>Lat/Lng</span><span id="coords" class="data-value">Waiting...</span></div></div>
-    <div class="card"><div class="card-title">Live Activity Log</div><div id="console-log"></div></div>
-</div>
-<script>
-    const SERVICE_UUID = '6ba1b218-15a8-461f-9fa8-5dcae273eafd';
-    const FROM_RADIO = 'f75c693e-1a21-40e8-94b5-17f05b7705c3';
-    const TO_RADIO = 'f75c693e-1a21-40e8-94b5-17f05b7705c2';
-    let device, toChar;
-    const logEl = document.getElementById('console-log');
-    function log(msg) { logEl.innerHTML += `<div>[${new Date().toLocaleTimeString()}] ${msg}</div>`; logEl.scrollTop = logEl.scrollHeight; }
+    <button id="test-btn" class="btn">📡 Broadcast Radar Test</button>
+    <div class="card">
+        <div id="status">Status: Disconnected</div>
+        <div id="log"></div>
+    </div>
+    <script>
+        const SVC = '6ba1b218-15a8-461f-9fa8-5dcae273eafd';
+        const TO_RADIO = 'f75c693e-1a21-40e8-94b5-17f05b7705c2';
+        let toChar;
+        function log(m) { const l = document.getElementById('log'); l.innerHTML += `<div>${m}</div>`; l.scrollTop = l.scrollHeight; }
 
-    document.getElementById('connect-btn').onclick = async () => {
-        try {
-            device = await navigator.bluetooth.requestDevice({ filters: [{ services: [SERVICE_UUID] }] });
-            const server = await device.gatt.connect();
-            const service = await server.getPrimaryService(SERVICE_UUID);
-            toChar = await service.getCharacteristic(TO_RADIO);
-            document.getElementById('conn-status').innerText = "CONNECTED";
-            document.getElementById('conn-status').className = "status-badge status-connected";
-            log("Hardware link established.");
-        } catch (e) { log("Error: " + e); }
-    };
+        document.getElementById('connect-btn').onclick = async () => {
+            try {
+                const dev = await navigator.bluetooth.requestDevice({ filters: [{ services: [SVC] }] });
+                const server = await dev.gatt.connect();
+                const svc = await server.getPrimaryService(SVC);
+                toChar = await svc.getCharacteristic(TO_RADIO);
+                document.getElementById('status').innerText = "Status: Connected";
+                log("Connected to Heltec.");
+            } catch (e) { log("Error: " + e); }
+        };
 
-    document.getElementById('test-radar-btn').onclick = async () => {
-        if (!toChar) { log("Connect device first!"); return; }
-        try {
+        document.getElementById('test-btn').onclick = async () => {
+            if (!toChar) { log("Connect first!"); return; }
             await toChar.writeValue(new Uint8Array([0x12, 0x06, 0x0a, 0x04, 0x54, 0x45, 0x53, 0x54]));
-            log("📡 Packet broadcast.");
-        } catch (e) { log("Broadcast failed: " + e); }
-    };
-</script>
+            log("Test packet sent.");
+        };
+    </script>
 </body>
 </html>
