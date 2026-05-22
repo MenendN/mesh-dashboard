@@ -2,50 +2,62 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mesh Radar</title>
-    <link rel="manifest" href="manifest.json">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Mesh Data Engine</title>
     <style>
-        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --warn: #facc15; --text: #f8fafc; }
-        body { font-family: -apple-system, sans-serif; background-color: var(--bg); color: var(--text); padding: 20px; }
-        .btn { display: block; width: 100%; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
-        #connect-btn { background-color: var(--accent); }
-        #test-btn { background-color: var(--warn); }
-        .card { background: var(--card); padding: 15px; border-radius: 12px; margin-top: 15px; }
-        #log { font-family: monospace; font-size: 0.8rem; background: #000; padding: 10px; height: 150px; overflow-y: auto; }
+        body { background: #000; color: #0f0; font-family: monospace; padding: 20px; }
+        #status { color: #fff; margin-bottom: 10px; }
     </style>
 </head>
 <body>
-    <button id="connect-btn" class="btn">Connect Heltec V3 via BLE</button>
-    <button id="test-btn" class="btn">📡 Broadcast Radar Test</button>
-    <div class="card">
-        <div id="status">Status: Disconnected</div>
-        <div id="log"></div>
-    </div>
+    <h3>Radar Data Engine</h3>
+    <button id="connect-btn" style="padding:15px; cursor:pointer;">CONNECT TO NODE</button>
+    <div id="status">Disconnected</div>
+    <pre id="data-display">Waiting for data...</pre>
+
     <script>
-        const SVC = '6ba1b218-15a8-461f-9fa8-5dcae273eafd';
-        const TO_RADIO = 'f75c693e-1a21-40e8-94b5-17f05b7705c2';
-        let toChar;
-        function log(m) { const l = document.getElementById('log'); l.innerHTML += `<div>${m}</div>`; l.scrollTop = l.scrollHeight; }
+        const SERVICE_UUID = '6ba1b218-15a8-461f-9fa8-5dcae273eafd';
+        const FROM_RADIO = 'f75c693e-1a21-40e8-94b5-17f05b7705c3';
+
+        let latestNodeData = { rssi: -120 }; // Start low
+        let rssiHistory = []; // For smoothing
+        let isNearNode = false;
 
         document.getElementById('connect-btn').onclick = async () => {
-            try {
-                const dev = await navigator.bluetooth.requestDevice({ filters: [{ services: [SVC] }] });
-                const server = await dev.gatt.connect();
-                const svc = await server.getPrimaryService(SVC);
-                toChar = await svc.getCharacteristic(TO_RADIO);
-                document.getElementById('status').innerText = "Status: Connected";
-                log("Connected to Heltec.");
-            } catch (e) { log("Error: " + e); }
+            const dev = await navigator.bluetooth.requestDevice({ filters: [{ services: [SERVICE_UUID] }] });
+            const server = await dev.gatt.connect();
+            const svc = await server.getPrimaryService(SERVICE_UUID);
+            const char = await svc.getCharacteristic(FROM_RADIO);
+            
+            document.getElementById('status').innerText = "Status: Connected & Streaming";
+            await char.startNotifications();
+            char.addEventListener('characteristicvaluechanged', (e) => parseMeshtasticData(e.target.value));
         };
 
-        document.getElementById('test-btn').onclick = async () => {
-            if (!toChar) { log("Connect first!"); return; }
-            await toChar.writeValue(new Uint8Array([0x12, 0x06, 0x0a, 0x04, 0x54, 0x45, 0x53, 0x54]));
-            log("Test packet sent.");
-        };
+        function parseMeshtasticData(data) {
+            // Simulated RSSI from incoming packet
+            let rawRssi = -Math.floor(Math.random() * 60 + 40); 
+            
+            // SMOOTHING: Keep last 5 readings to prevent flickering
+            rssiHistory.push(rawRssi);
+            if (rssiHistory.length > 5) rssiHistory.shift();
+            let avgRssi = rssiHistory.reduce((a, b) => a + b) / rssiHistory.length;
+
+            latestNodeData.rssi = Math.round(avgRssi);
+            
+            // PROXIMITY LOGIC
+            // Change 'isNearNode' state when RSSI is better than -70
+            if (latestNodeData.rssi > -70) {
+                if (!isNearNode) {
+                    isNearNode = true;
+                    console.log("PROXIMITY ALERT: Signal strong!");
+                }
+            } else {
+                isNearNode = false;
+            }
+
+            document.getElementById('data-display').innerText = 
+                `RSSI (Smoothed): ${latestNodeData.rssi} dBm\nNear Node: ${isNearNode}`;
+        }
     </script>
 </body>
 </html>
