@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mesh Database Sync</title>
+    <title>Dynamic Mesh Monitor</title>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -12,6 +12,7 @@
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --success: #22c55e;
+            --error: #ef4444;
         }
 
         body {
@@ -88,15 +89,29 @@
         .data-row:last-child { border-bottom: none; }
 
         #console-log {
-            max-height: 200px;
+            max-height: 250px;
             overflow-y: auto;
             font-family: monospace;
             font-size: 0.8rem;
             background: #020617;
             padding: 12px;
             border-radius: 6px;
-            color: #a7f3d0;
+            line-height: 1.6;
         }
+
+        /* Color-Coded Log Styles */
+        .log-sys { color: #64748b; }       /* Gray for system idle loops */
+        .log-blue { color: #38bdf8; }      /* Sky Blue for connection/GPS setup */
+        .log-data {                        /* High-vis Neon Green for live data captures */
+            color: #4ade80; 
+            background-color: #052e16; 
+            padding: 2px 6px; 
+            border-radius: 4px; 
+            margin: 2px 0;
+            display: block;
+            font-weight: bold;
+        }
+        .log-err { color: #f87171; }       /* Coral Red for errors */
     </style>
 </head>
 <body>
@@ -119,7 +134,7 @@
 
     <div class="card">
         <div class="card-title">Live Activity Log</div>
-        <div id="console-log">System ready. Connect hardware to begin...</div>
+        <div id="console-log"></div>
     </div>
 </div>
 
@@ -134,13 +149,20 @@
     const phoneGpsBtn = document.getElementById('phone-gps-btn');
     const statusLabel = document.getElementById('conn-status');
 
-    function displayLog(text) {
+    function displayLog(text, type = 'sys') {
         const timeStr = new Date().toLocaleTimeString();
-        consoleLog.innerHTML += `<div>[${timeStr}] ${text}</div>`;
+        let classType = 'log-sys';
+        if (type === 'blue') classType = 'log-blue';
+        if (type === 'data') classType = 'log-data';
+        if (type === 'err') classType = 'log-err';
+
+        consoleLog.innerHTML += `<div class="${classType}">[${timeStr}] ${text}</div>`;
         consoleLog.scrollTop = consoleLog.scrollHeight;
     }
 
-    // Handles incoming data notification streams
+    // Initialize display layout state
+    displayLog("System initialized. Awaiting hardware connection...", "sys");
+
     function handleIncomingNotification(event) {
         const buffer = new Uint8Array(event.target.value.buffer);
         processRawBytes(buffer);
@@ -148,6 +170,7 @@
 
     function processRawBytes(buffer) {
         let cursor = 0;
+        let packetFound = false;
         while (cursor < buffer.length) {
             const tag = buffer[cursor++];
             const wireType = tag & 0x07;
@@ -163,6 +186,7 @@
                 }
                 analyzeSubPacket(buffer.subarray(cursor, cursor + len));
                 cursor += len;
+                packetFound = true;
             } else {
                 if (wireType === 0) { while (cursor < buffer.length && (buffer[cursor++] & 0x80) !== 0); }
                 else if (wireType === 1) cursor += 8;
@@ -178,6 +202,11 @@
                 }
                 else if (wireType === 5) cursor += 4;
             }
+        }
+        
+        // Let user know the engine is successfully polling the device
+        if (!packetFound) {
+            displayLog("Stream checked: Buffer clear / No new airtime data", "sys");
         }
     }
 
@@ -237,29 +266,34 @@
         }
 
         if (nodeIdentity !== "Unknown") {
-            const rssiString = computedRssi !== null ? `${computedRssi} dBm` : "Stored Data Frame";
+            const rssiString = computedRssi !== null ? `${computedRssi} dBm` : "Database Record Found";
             const snrString = computedSnr !== null ? `${computedSnr.toFixed(1)} SNR` : "N/A";
-            displayLog(`📥 NODE SYNC: ID ${nodeIdentity} | RSSI: ${rssiString} | SNR: ${snrString}`);
+            displayLog(`📥 NODE SYNC: ID ${nodeIdentity} | RSSI: ${rssiString} | SNR: ${snrString}`, "data");
         }
     }
 
-    // GPS tracking engine logic
     phoneGpsBtn.addEventListener('click', () => {
-        if (!navigator.geolocation) return;
+        if (!navigator.geolocation) {
+            displayLog("GPS not supported by this environment.", "err");
+            return;
+        }
         if (gpsWatchId !== null) {
             navigator.geolocation.clearWatch(gpsWatchId);
             gpsWatchId = null;
             phoneGpsBtn.innerText = "Use iPhone GPS Location";
             phoneGpsBtn.style.backgroundColor = "#475569";
+            displayLog("GPS stream paused.", "blue");
             return;
         }
+        displayLog("Requesting device location stream...", "blue");
         gpsWatchId = navigator.geolocation.watchPosition(
             (position) => {
                 document.getElementById('gps-lat').innerText = position.coords.latitude.toFixed(6);
                 document.getElementById('gps-lng').innerText = position.coords.longitude.toFixed(6);
                 document.getElementById('gps-alt').innerText = position.coords.altitude ? `${position.coords.altitude.toFixed(1)}m` : "Unavailable";
+                displayLog(`GPS updated: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`, "blue");
             },
-            (err) => displayLog(`GPS Error: ${err.message}`),
+            (err) => displayLog(`GPS Error: ${err.message}. Please check app location settings.`, "err"),
             { enableHighAccuracy: true }
         );
         phoneGpsBtn.innerText = "Stop iPhone GPS";
@@ -267,9 +301,12 @@
     });
 
     connectBtn.addEventListener('click', async () => {
-        if (!navigator.bluetooth) return;
+        if (!navigator.bluetooth) {
+            displayLog("Web Bluetooth interface unavailable.", "err");
+            return;
+        }
         try {
-            displayLog("Scanning for Heltec device link...");
+            displayLog("Scanning for Heltec device link...", "blue");
             selectedDevice = await navigator.bluetooth.requestDevice({
                 filters: [{ services: [BLE_SERVICES[0]] }, { services: [BLE_SERVICES[1]] }]
             });
@@ -286,30 +323,32 @@
                 try { fromRadioChar = await primarySvc.getCharacteristic(uuid); break; } catch (e) {}
             }
 
-            // Fallback strategy if notify actions trigger a firmware fault
+            statusLabel.innerText = "CONNECTED";
+            statusLabel.className = "status-badge status-connected";
+            connectBtn.style.display = "none";
+
             try {
                 await fromRadioChar.startNotifications();
                 fromRadioChar.addEventListener('characteristicvaluechanged', handleIncomingNotification);
-                displayLog("Notification pipe open. Ready for background sync...");
+                displayLog("Notification pipe open. Listening...", "blue");
             } catch (notifyErr) {
-                displayLog("Notification subscription refused by firmware. Running loop engine instead.");
+                displayLog("Notification rejected. Deploying loop engine layer...", "blue");
                 async function pollEngine() {
                     if (!selectedDevice.gatt.connected) return;
                     try {
                         const val = await fromRadioChar.readValue();
                         if (val && val.byteLength > 0) processRawBytes(new Uint8Array(val.buffer));
-                    } catch (e) {}
-                    setTimeout(pollEngine, 350);
+                        else processRawBytes(new Uint8Array(0)); // Keep active check trace visible
+                    } catch (e) {
+                        displayLog(`Polling link fault: ${e.message}`, "err");
+                    }
+                    setTimeout(pollEngine, 800); // Clean 800ms logging stride
                 }
                 pollEngine();
             }
 
-            statusLabel.innerText = "CONNECTED";
-            statusLabel.className = "status-badge status-connected";
-            connectBtn.style.display = "none";
-
         } catch (error) {
-            displayLog(`Link Error: ${error.message || error}`);
+            displayLog(`Link Error: ${error.message || error}`, "err");
         }
     });
 </script>
