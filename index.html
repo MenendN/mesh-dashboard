@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic Mesh Monitor</title>
+    <title>Mesh Bar Monitor</title>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -83,274 +83,40 @@
         .data-row {
             display: flex;
             justify-content: space-between;
-            padding: 8px 0;
+            align-items: center;
+            padding: 10px 0;
             border-bottom: 1px solid #334155;
         }
         .data-row:last-child { border-bottom: none; }
+        .data-label { color: var(--text-muted); }
+        .data-value { font-weight: 500; font-family: monospace; }
+
+        /* Cell-style Signal Bar Wrapper */
+        .signal-bars {
+            display: flex;
+            align-items: flex-end;
+            gap: 4px;
+            height: 24px;
+            padding-right: 4px;
+        }
+
+        .bar {
+            width: 6px;
+            background-color: #334155; /* Default Dim Unlit State */
+            border-radius: 2px;
+            transition: background-color 0.2s ease;
+        }
+        .bar1 { height: 25%; }
+        .bar2 { height: 50%; }
+        .bar3 { height: 75%; }
+        .bar4 { height: 100%; }
+
+        #sig-status-text {
+            font-size: 0.85rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
 
         #console-log {
-            max-height: 250px;
-            overflow-y: auto;
-            font-family: monospace;
-            font-size: 0.8rem;
-            background: #020617;
-            padding: 12px;
-            border-radius: 6px;
-            line-height: 1.6;
-        }
-
-        /* Color-Coded Log Styles */
-        .log-sys { color: #64748b; }       /* Gray for system idle loops */
-        .log-blue { color: #38bdf8; }      /* Sky Blue for connection/GPS setup */
-        .log-data {                        /* High-vis Neon Green for live data captures */
-            color: #4ade80; 
-            background-color: #052e16; 
-            padding: 2px 6px; 
-            border-radius: 4px; 
-            margin: 2px 0;
-            display: block;
-            font-weight: bold;
-        }
-        .log-err { color: #f87171; }       /* Coral Red for errors */
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <header>
-        <h1>Mesh Node Tracker</h1>
-        <span id="conn-status" class="status-badge">OFFLINE</span>
-    </header>
-
-    <button id="connect-btn" class="btn">Connect Heltec V3 via BLE</button>
-    <button id="phone-gps-btn" class="btn btn-secondary">Use iPhone GPS Location</button>
-
-    <div class="card">
-        <div class="card-title">GPS Coordinates</div>
-        <div class="data-row"><span style="color:var(--text-muted)">Latitude</span><span id="gps-lat">Waiting...</span></div>
-        <div class="data-row"><span style="color:var(--text-muted)">Longitude</span><span id="gps-lng">Waiting...</span></div>
-        <div class="data-row"><span style="color:var(--text-muted)">Altitude</span><span id="gps-alt">Waiting...</span></div>
-    </div>
-
-    <div class="card">
-        <div class="card-title">Live Activity Log</div>
-        <div id="console-log"></div>
-    </div>
-</div>
-
-<script>
-    const BLE_SERVICES = ['cb9b240e-9e5b-4699-953b-2faac16a17f1', '6ba1b218-15a8-461f-9fa8-5dcae273eafd'];
-    const FROM_RADIO_UUIDS = ['f75c693e-1a21-40e8-94b5-17f05b7705c3', '2c55e69e-4993-11ed-b878-0242ac120002'];
-
-    let selectedDevice = null;
-    let gpsWatchId = null;
-    const consoleLog = document.getElementById('console-log');
-    const connectBtn = document.getElementById('connect-btn');
-    const phoneGpsBtn = document.getElementById('phone-gps-btn');
-    const statusLabel = document.getElementById('conn-status');
-
-    function displayLog(text, type = 'sys') {
-        const timeStr = new Date().toLocaleTimeString();
-        let classType = 'log-sys';
-        if (type === 'blue') classType = 'log-blue';
-        if (type === 'data') classType = 'log-data';
-        if (type === 'err') classType = 'log-err';
-
-        consoleLog.innerHTML += `<div class="${classType}">[${timeStr}] ${text}</div>`;
-        consoleLog.scrollTop = consoleLog.scrollHeight;
-    }
-
-    // Initialize display layout state
-    displayLog("System initialized. Awaiting hardware connection...", "sys");
-
-    function handleIncomingNotification(event) {
-        const buffer = new Uint8Array(event.target.value.buffer);
-        processRawBytes(buffer);
-    }
-
-    function processRawBytes(buffer) {
-        let cursor = 0;
-        let packetFound = false;
-        while (cursor < buffer.length) {
-            const tag = buffer[cursor++];
-            const wireType = tag & 0x07;
-            const fieldNumber = tag >> 3;
-
-            if (fieldNumber === 2 && wireType === 2) { 
-                let len = 0, shift = 0;
-                while (cursor < buffer.length) {
-                    const b = buffer[cursor++];
-                    len |= (b & 0x7F) << shift;
-                    if ((b & 0x80) === 0) break;
-                    shift += 7;
-                }
-                analyzeSubPacket(buffer.subarray(cursor, cursor + len));
-                cursor += len;
-                packetFound = true;
-            } else {
-                if (wireType === 0) { while (cursor < buffer.length && (buffer[cursor++] & 0x80) !== 0); }
-                else if (wireType === 1) cursor += 8;
-                else if (wireType === 2) {
-                    let lengthValue = 0, currentShift = 0;
-                    while (cursor < buffer.length) {
-                        const currentByte = buffer[cursor++];
-                        lengthValue |= (currentByte & 0x7F) << currentShift;
-                        if ((currentByte & 0x80) === 0) break;
-                        currentShift += 7;
-                    }
-                    cursor += lengthValue;
-                }
-                else if (wireType === 5) cursor += 4;
-            }
-        }
-        
-        // Let user know the engine is successfully polling the device
-        if (!packetFound) {
-            displayLog("Stream checked: Buffer clear / No new airtime data", "sys");
-        }
-    }
-
-    function analyzeSubPacket(packet) {
-        let index = 0;
-        let nodeIdentity = "Unknown";
-        let computedRssi = null;
-        let computedSnr = null;
-
-        while (index < packet.length) {
-            const tag = packet[index++];
-            const wireType = tag & 0x07;
-            const fieldNum = tag >> 3;
-
-            if (fieldNum === 1) { 
-                let value = 0, shift = 0;
-                while (index < packet.length) {
-                    const b = packet[index++];
-                    value |= (b & 0x7F) << shift;
-                    if ((b & 0x80) === 0) break;
-                    shift += 7;
-                }
-                nodeIdentity = `!${value.toString(16).toUpperCase()}`;
-            } else if (fieldNum === 8) { 
-                let value = 0, shift = 0;
-                while (index < packet.length) {
-                    const b = packet[index++];
-                    value |= (b & 0x7F) << shift;
-                    if ((b & 0x80) === 0) break;
-                    shift += 7;
-                }
-                computedRssi = (value << 0); 
-            } else if (fieldNum === 9) { 
-                let value = 0, shift = 0;
-                while (index < packet.length) {
-                    const b = packet[index++];
-                    value |= (b & 0x7F) << shift;
-                    if ((b & 0x80) === 0) break;
-                    shift += 7;
-                }
-                computedSnr = (value << 0) / 4; 
-            } else {
-                if (wireType === 0) { while (index < packet.length && (packet[index++] & 0x80) !== 0); }
-                else if (wireType === 1) index += 8;
-                else if (wireType === 2) {
-                    let l = 0, s = 0;
-                    while (index < packet.length) {
-                        const b = packet[index++];
-                        l |= (b & 0x7F) << s;
-                        if ((b & 0x80) === 0) break;
-                        s += 7;
-                    }
-                    index += l;
-                }
-                else if (wireType === 5) index += 4;
-            }
-        }
-
-        if (nodeIdentity !== "Unknown") {
-            const rssiString = computedRssi !== null ? `${computedRssi} dBm` : "Database Record Found";
-            const snrString = computedSnr !== null ? `${computedSnr.toFixed(1)} SNR` : "N/A";
-            displayLog(`📥 NODE SYNC: ID ${nodeIdentity} | RSSI: ${rssiString} | SNR: ${snrString}`, "data");
-        }
-    }
-
-    phoneGpsBtn.addEventListener('click', () => {
-        if (!navigator.geolocation) {
-            displayLog("GPS not supported by this environment.", "err");
-            return;
-        }
-        if (gpsWatchId !== null) {
-            navigator.geolocation.clearWatch(gpsWatchId);
-            gpsWatchId = null;
-            phoneGpsBtn.innerText = "Use iPhone GPS Location";
-            phoneGpsBtn.style.backgroundColor = "#475569";
-            displayLog("GPS stream paused.", "blue");
-            return;
-        }
-        displayLog("Requesting device location stream...", "blue");
-        gpsWatchId = navigator.geolocation.watchPosition(
-            (position) => {
-                document.getElementById('gps-lat').innerText = position.coords.latitude.toFixed(6);
-                document.getElementById('gps-lng').innerText = position.coords.longitude.toFixed(6);
-                document.getElementById('gps-alt').innerText = position.coords.altitude ? `${position.coords.altitude.toFixed(1)}m` : "Unavailable";
-                displayLog(`GPS updated: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`, "blue");
-            },
-            (err) => displayLog(`GPS Error: ${err.message}. Please check app location settings.`, "err"),
-            { enableHighAccuracy: true }
-        );
-        phoneGpsBtn.innerText = "Stop iPhone GPS";
-        phoneGpsBtn.style.backgroundColor = "#e11d48";
-    });
-
-    connectBtn.addEventListener('click', async () => {
-        if (!navigator.bluetooth) {
-            displayLog("Web Bluetooth interface unavailable.", "err");
-            return;
-        }
-        try {
-            displayLog("Scanning for Heltec device link...", "blue");
-            selectedDevice = await navigator.bluetooth.requestDevice({
-                filters: [{ services: [BLE_SERVICES[0]] }, { services: [BLE_SERVICES[1]] }]
-            });
-
-            const connectionGatt = await selectedDevice.gatt.connect();
-            let primarySvc = null;
-
-            for (const uuid of BLE_SERVICES) {
-                try { primarySvc = await connectionGatt.getPrimaryService(uuid); break; } catch (e) {}
-            }
-
-            let fromRadioChar = null;
-            for (const uuid of FROM_RADIO_UUIDS) {
-                try { fromRadioChar = await primarySvc.getCharacteristic(uuid); break; } catch (e) {}
-            }
-
-            statusLabel.innerText = "CONNECTED";
-            statusLabel.className = "status-badge status-connected";
-            connectBtn.style.display = "none";
-
-            try {
-                await fromRadioChar.startNotifications();
-                fromRadioChar.addEventListener('characteristicvaluechanged', handleIncomingNotification);
-                displayLog("Notification pipe open. Listening...", "blue");
-            } catch (notifyErr) {
-                displayLog("Notification rejected. Deploying loop engine layer...", "blue");
-                async function pollEngine() {
-                    if (!selectedDevice.gatt.connected) return;
-                    try {
-                        const val = await fromRadioChar.readValue();
-                        if (val && val.byteLength > 0) processRawBytes(new Uint8Array(val.buffer));
-                        else processRawBytes(new Uint8Array(0)); // Keep active check trace visible
-                    } catch (e) {
-                        displayLog(`Polling link fault: ${e.message}`, "err");
-                    }
-                    setTimeout(pollEngine, 800); // Clean 800ms logging stride
-                }
-                pollEngine();
-            }
-
-        } catch (error) {
-            displayLog(`Link Error: ${error.message || error}`, "err");
-        }
-    });
-</script>
-</body>
-</html>
+            max
+            
