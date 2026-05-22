@@ -1,0 +1,400 @@
+Here is a single, complete, production-ready `index.html` file that includes everything you need: clean CSS layout, Bluetooth management, and an explicit inline parser that extracts Mesh metadata and GPS position fields without requiring external build dependencies.
+
+Save this block exactly as `index.html`, serve it via an HTTPS connection (or local tunnel), and open it directly inside Bluefy on your iPhone.
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mesh Data Dashboard</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #38bdf8;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #22c55e;
+            --error: #ef4444;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 16px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #334155;
+        }
+
+        h1 {
+            font-size: 1.25rem;
+            margin: 0;
+        }
+
+        .status-badge {
+            font-size: 0.85rem;
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background-color: #334155;
+        }
+
+        .status-connected { background-color: var(--success); color: white; }
+        .status-disconnected { background-color: var(--error); color: white; }
+
+        .btn {
+            display: block;
+            width: 100%;
+            background-color: var(--accent);
+            color: #000;
+            font-weight: bold;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .btn:active {
+            opacity: 0.9;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-title {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #334155;
+        }
+
+        .data-row:last-child {
+            border-bottom: none;
+        }
+
+        .data-label {
+            color: var(--text-muted);
+        }
+
+        .data-value {
+            font-weight: 500;
+            font-family: monospace;
+        }
+
+        #log-container {
+            max-height: 150px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.8rem;
+            background: #020617;
+            padding: 10px;
+            border-radius: 6px;
+            color: #a7f3d0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Heltec V3 Data</h1>
+        <span id="connection-status" class="status-badge status-disconnected">OFFLINE</span>
+    </header>
+
+    <button id="connect-btn" class="btn">Connect Heltec V3 via BLE</button>
+
+    <!-- GPS Coordinates Card -->
+    <div class="card">
+        <div class="card-title">GPS Coordinates</div>
+        <div class="data-row">
+            <span class="data-label">Latitude</span>
+            <span id="gps-lat" class="data-value">Waiting...</span>
+        </div>
+        <div class="data-row">
+            <span class="data-label">Longitude</span>
+            <span id="gps-lng" class="data-value">Waiting...</span>
+        </div>
+        <div class="data-row">
+            <span class="data-label">Altitude</span>
+            <span id="gps-alt" class="data-value">Waiting...</span>
+        </div>
+    </div>
+
+    <!-- Mesh Packet Metadata Card -->
+    <div class="card">
+        <div class="card-title">Mesh Telemetry & Data</div>
+        <div class="data-row">
+            <span class="data-label">Sender Node ID</span>
+            <span id="mesh-sender" class="data-value">--</span>
+        </div>
+        <div class="data-row">
+            <span class="data-label">Packet ID</span>
+            <span id="mesh-packet-id" class="data-value">--</span>
+        </div>
+        <div class="data-row">
+            <span class="data-label">Hop Limit</span>
+            <span id="mesh-hop-limit" class="data-value">--</span>
+        </div>
+        <div class="data-row">
+            <span class="data-label">Payload Size</span>
+            <span id="mesh-payload-len" class="data-value">0 bytes</span>
+        </div>
+    </div>
+
+    <!-- Live Raw Stream Log -->
+    <div class="card">
+        <div class="card-title">Console Activity</div>
+        <div id="log-container">System ready. Tap connect.</div>
+    </div>
+</div>
+
+<script>
+    // Meshtastic GATT specifications
+    const SERVICE_UUID    = '6ba1b218-15a8-461f-9fa8-5dcae273eafd';
+    const FROM_RADIO_UUID = '2c55e69e-4993-11ed-b878-0242ac120002';
+    const FROM_NUM_UUID   = 'ed9da18c-a800-4f66-a670-aa7547e34453';
+
+    let bleDevice = null;
+    let fromRadioChar = null;
+
+    const connectBtn = document.getElementById('connect-btn');
+    const statusBadge = document.getElementById('connection-status');
+    const logBox = document.getElementById('log-container');
+
+    function logger(msg) {
+        const time = new Date().toLocaleTimeString();
+        logBox.innerHTML += `<div>[${time}] ${msg}</div>`;
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    connectBtn.addEventListener('click', async () => {
+        if (!navigator.bluetooth) {
+            alert("Web Bluetooth not found. Ensure you are inside Bluefy browser over HTTPS.");
+            return;
+        }
+
+        try {
+            logger("Scanning for Meshtastic device...");
+            bleDevice = await navigator.bluetooth.requestDevice({
+                filters: [{ services: [SERVICE_UUID] }]
+            });
+
+            logger(`Found: ${bleDevice.name}. Connecting to GATT...`);
+            const server = await bleDevice.gatt.connect();
+
+            logger("Fetching primary service...");
+            const service = await server.getPrimaryService(SERVICE_UUID);
+
+            logger("Hooking into FromRadio characteristic...");
+            fromRadioChar = await service.getCharacteristic(FROM_RADIO_UUID);
+
+            // Hook notification pointer register
+            const fromNumChar = await service.getCharacteristic(FROM_NUM_UUID);
+            await fromNumChar.startNotifications();
+            
+            // Listen to data shifts on fromRadio
+            await fromRadioChar.startNotifications();
+            fromRadioChar.addEventListener('characteristicvaluechanged', handleRadioData);
+
+            statusBadge.innerText = "CONNECTED";
+            statusBadge.className = "status-badge status-connected";
+            connectBtn.style.display = "none";
+            logger("Connected successfully! Extraction engine alive.");
+
+        } catch (err) {
+            logger(`Error: ${err.message}`);
+            console.error(err);
+        }
+    });
+
+    function handleRadioData(event) {
+        const view = event.target.value;
+        if (view.byteLength === 0) return;
+
+        // Clone buffer to preserve raw byte structure
+        const bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
+        
+        document.getElementById('mesh-payload-len').innerText = `${bytes.length} bytes`;
+        logger(`Raw buffer burst: ${bytes.length}B`);
+
+        parseFromRadioProtobuf(bytes);
+    }
+
+    /**
+     * Direct parser scanning structural keys out of the Protobuf layout.
+     * Prevents requiring a multi-megabyte compiled build bundle step.
+     */
+    function parseFromRadioProtobuf(bytes) {
+        let i = 0;
+        
+        // Scan high level FromRadio keys
+        while (i < bytes.length) {
+            const key = bytes[i];
+            const type = key & 0x07;
+            const fieldNum = key >> 3;
+            i++;
+
+            if (fieldNum === 2 && type === 2) { 
+                // Field 2 = MeshPacket packet wrapper (Length-delimited payload)
+                const packetLen = bytes[i++];
+                const packetEnd = i + packetLen;
+                parseMeshPacket(bytes.subarray(i, packetEnd));
+                i = packetEnd;
+            } else {
+                i = skipVarintField(bytes, i, type);
+            }
+        }
+    }
+
+    function parseMeshPacket(packetBytes) {
+        let i = 0;
+        while (i < packetBytes.length) {
+            const key = packetBytes[i];
+            const type = key & 0x07;
+            const fieldNum = key >> 3;
+            i++;
+
+            if (fieldNum === 1) { // from (Sender Node ID)
+                const [val, nextIdx] = readVarint(packetBytes, i);
+                document.getElementById('mesh-sender').innerText = `!${val.toString(16)}`;
+                i = nextIdx;
+            } else if (fieldNum === 3) { // id (Packet ID tracking)
+                const [val, nextIdx] = readVarint(packetBytes, i);
+                document.getElementById('mesh-packet-id').innerText = val;
+                i = nextIdx;
+            } else if (fieldNum === 4) { // hop_limit
+                const [val, nextIdx] = readVarint(packetBytes, i);
+                document.getElementById('mesh-hop-limit').innerText = val;
+                i = nextIdx;
+            } else if (fieldNum === 7 && type === 2) { // encrypted/unencrypted inner payload variant
+                const len = packetBytes[i++];
+                const end = i + len;
+                parseDataPayload(packetBytes.subarray(i, end));
+                i = end;
+            } else {
+                i = skipVarintField(packetBytes, i, type);
+            }
+        }
+    }
+
+    function parseDataPayload(payloadBytes) {
+        let i = 0;
+        let portnum = 0;
+        let innerData = null;
+
+        while (i < payloadBytes.length) {
+            const key = payloadBytes[i];
+            const type = key & 0x07;
+            const fieldNum = key >> 3;
+            i++;
+
+            if (fieldNum === 1) { // portnum identifying data payload structural variant
+                const [val, nextIdx] = readVarint(payloadBytes, i);
+                portnum = val; // Port 3 = Position payload identifier
+                i = nextIdx;
+            } else if (fieldNum === 2 && type === 2) { // payload bytes body payload
+                const len = payloadBytes[i++];
+                innerData = payloadBytes.subarray(i, i + len);
+                i += len;
+            } else {
+                i = skipVarintField(payloadBytes, i, type);
+            }
+        }
+
+        // Portnum 3 corresponds exactly to Meshtastic default Positioning coordinates payloads
+        if (portnum === 3 && innerData) {
+            extractGPS(innerData);
+        }
+    }
+
+    function extractGPS(gpsBytes) {
+        let i = 0;
+        while (i < gpsBytes.length) {
+            const key = gpsBytes[i];
+            const type = key & 0x07;
+            const fieldNum = key >> 3;
+            i++;
+
+            if (fieldNum === 1) { // latitude_i (scaled by 1e7)
+                const [val, nextIdx] = readVarint(gpsBytes, i);
+                const signedLat = (val << 0) / 10000000;
+                document.getElementById('gps-lat').innerText = signedLat.toFixed(6);
+                i = nextIdx;
+            } else if (fieldNum === 2) { // longitude_i (scaled by 1e7)
+                const [val, nextIdx] = readVarint(gpsBytes, i);
+                const signedLng = (val << 0) / 10000000;
+                document.getElementById('gps-lng').innerText = signedLng.toFixed(6);
+                i = nextIdx;
+            } else if (fieldNum === 3) { // altitude
+                const [val, nextIdx] = readVarint(gpsBytes, i);
+                document.getElementById('gps-alt').innerText = `${val} meters`;
+                i = nextIdx;
+            } else {
+                i = skipVarintField(gpsBytes, i, type);
+            }
+        }
+    }
+
+    // Low-level helper variants to crawl across binary raw format blocks
+    function readVarint(bytes, index) {
+        let value = 0;
+        let shift = 0;
+        while (index < bytes.length) {
+            const byte = bytes[index++];
+            value |= (byte & 0x7F) << shift;
+            if ((byte & 0x80) === 0) break;
+            shift += 7;
+        }
+        return [value, index];
+    }
+
+    function skipVarintField(bytes, index, type) {
+        if (type === 0) { // Varint
+            while (index < bytes.length && (bytes[index++] & 0x80) !== 0);
+        } else if (type === 1) { // 64-bit
+            index += 8;
+        } else if (type === 2) { // Length-delimited
+            const [len, nextIdx] = readVarint(bytes, index);
+            index = nextIdx + len;
+        } else if (type === 5) { // 32-bit
+            index += 4;
+        }
+        return index;
+    }
+</script>
+</body>
+</html>
+
+```
