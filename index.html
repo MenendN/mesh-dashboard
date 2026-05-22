@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -131,7 +130,6 @@
 
     <button id="connect-btn" class="btn">Connect Heltec V3 via BLE</button>
 
-    <!-- GPS Coordinates Card -->
     <div class="card">
         <div class="card-title">GPS Coordinates</div>
         <div class="data-row">
@@ -148,7 +146,6 @@
         </div>
     </div>
 
-    <!-- Mesh Packet Metadata Card -->
     <div class="card">
         <div class="card-title">Mesh Telemetry & Data</div>
         <div class="data-row">
@@ -169,7 +166,6 @@
         </div>
     </div>
 
-    <!-- Live Raw Stream Log -->
     <div class="card">
         <div class="card-title">Console Activity</div>
         <div id="log-container">System ready. Tap connect.</div>
@@ -177,10 +173,21 @@
 </div>
 
 <script>
-    // Meshtastic GATT specifications
-    const SERVICE_UUID    = '6ba1b218-15a8-461f-9fa8-5dcae273eafd';
-    const FROM_RADIO_UUID = '2c55e69e-4993-11ed-b878-0242ac120002';
-    const FROM_NUM_UUID   = 'ed9da18c-a800-4f66-a670-aa7547e34453';
+    // Dual standard arrays to cross-examine Meshtastic firmware shifts
+    const SERVICE_UUIDS = [
+        'cb9b240e-9e5b-4699-953b-2faac16a17f1', // Standard App Service
+        '6ba1b218-15a8-461f-9fa8-5dcae273eafd'  // Alternate baseline Service
+    ];
+
+    const FROM_RADIO_UUIDS = [
+        'f75c693e-1a21-40e8-94b5-17f05b7705c3', // Standard Notify Characteristic
+        '2c55e69e-4993-11ed-b878-0242ac120002'  // Legacy variant pointer
+    ];
+
+    const FROM_NUM_UUIDS = [
+        'e0b2413e-ae8a-4cf3-a759-b1d619b0aa1f', // Standard counter track 
+        'ed9da18c-a800-4f66-a670-aa7547e34453'  // Legacy variant track
+    ];
 
     let bleDevice = null;
     let fromRadioChar = null;
@@ -197,65 +204,82 @@
 
     connectBtn.addEventListener('click', async () => {
         if (!navigator.bluetooth) {
-            alert("Web Bluetooth not found. Ensure you are inside Bluefy browser over HTTPS.");
+            alert("Web Bluetooth API not detected.");
             return;
         }
 
         try {
-            logger("Scanning for Meshtastic device...");
+            logger("Scanning for Meshtastic hardware...");
             bleDevice = await navigator.bluetooth.requestDevice({
-                filters: [{ services: [SERVICE_UUID] }]
+                filters: [
+                    { services: [SERVICE_UUIDS[0]] },
+                    { services: [SERVICE_UUIDS[1]] }
+                ]
             });
 
             logger(`Found: ${bleDevice.name}. Connecting to GATT...`);
             const server = await bleDevice.gatt.connect();
 
-            logger("Fetching primary service...");
-            const service = await server.getPrimaryService(SERVICE_UUID);
+            logger("Querying target service architecture...");
+            let primaryService = null;
+            for (const uuid of SERVICE_UUIDS) {
+                try {
+                    primaryService = await server.getPrimaryService(uuid);
+                    logger(`Bound to service: ${uuid.substring(0,8)}...`);
+                    break;
+                } catch (e) { continue; }
+            }
 
-            logger("Hooking into FromRadio characteristic...");
-            fromRadioChar = await service.getCharacteristic(FROM_RADIO_UUID);
+            if (!primaryService) throw new Error("Compatible Meshtastic GATT service architecture not found.");
 
-            // Hook notification pointer register
-            const fromNumChar = await service.getCharacteristic(FROM_NUM_UUID);
-            await fromNumChar.startNotifications();
+            // Loop and hook FromRadio
+            logger("Probing notify structures...");
+            for (const uuid of FROM_RADIO_UUIDS) {
+                try {
+                    fromRadioChar = await primaryService.getCharacteristic(uuid);
+                    logger(`Mapped payload pipeline: ${uuid.substring(0,8)}...`);
+                    break;
+                } catch (e) { continue; }
+            }
+
+            if (!fromRadioChar) throw new Error("FromRadio pipeline lookup returned completely undefined.");
+
+            // Attempt structural notification pointers hooks
+            for (const uuid of FROM_NUM_UUIDS) {
+                try {
+                    const numChar = await primaryService.getCharacteristic(uuid);
+                    await numChar.startNotifications();
+                    logger(`Synchronized sequence index.`);
+                    break;
+                } catch (e) { continue; }
+            }
             
-            // Listen to data shifts on fromRadio
             await fromRadioChar.startNotifications();
             fromRadioChar.addEventListener('characteristicvaluechanged', handleRadioData);
 
             statusBadge.innerText = "CONNECTED";
             statusBadge.className = "status-badge status-connected";
             connectBtn.style.display = "none";
-            logger("Connected successfully! Extraction engine alive.");
+            logger("Handshake finalized. Standing by for mesh frames...");
 
         } catch (err) {
-            logger(`Error: ${err.message}`);
+            logger(`Error: ${err.message || err}`);
             console.error(err);
         }
     });
 
     function handleRadioData(event) {
         const view = event.target.value;
-        if (view.byteLength === 0) return;
+        if (!view || view.byteLength === 0) return;
 
-        // Clone buffer to preserve raw byte structure
         const bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
-        
         document.getElementById('mesh-payload-len').innerText = `${bytes.length} bytes`;
-        logger(`Raw buffer burst: ${bytes.length}B`);
-
+        
         parseFromRadioProtobuf(bytes);
     }
 
-    /**
-     * Direct parser scanning structural keys out of the Protobuf layout.
-     * Prevents requiring a multi-megabyte compiled build bundle step.
-     */
     function parseFromRadioProtobuf(bytes) {
         let i = 0;
-        
-        // Scan high level FromRadio keys
         while (i < bytes.length) {
             const key = bytes[i];
             const type = key & 0x07;
@@ -263,8 +287,8 @@
             i++;
 
             if (fieldNum === 2 && type === 2) { 
-                // Field 2 = MeshPacket packet wrapper (Length-delimited payload)
-                const packetLen = bytes[i++];
+                const [packetLen, nextIdx] = readVarint(bytes, i);
+                i = nextIdx;
                 const packetEnd = i + packetLen;
                 parseMeshPacket(bytes.subarray(i, packetEnd));
                 i = packetEnd;
@@ -282,20 +306,21 @@
             const fieldNum = key >> 3;
             i++;
 
-            if (fieldNum === 1) { // from (Sender Node ID)
+            if (fieldNum === 1) { 
                 const [val, nextIdx] = readVarint(packetBytes, i);
                 document.getElementById('mesh-sender').innerText = `!${val.toString(16)}`;
                 i = nextIdx;
-            } else if (fieldNum === 3) { // id (Packet ID tracking)
+            } else if (fieldNum === 3) { 
                 const [val, nextIdx] = readVarint(packetBytes, i);
                 document.getElementById('mesh-packet-id').innerText = val;
                 i = nextIdx;
-            } else if (fieldNum === 4) { // hop_limit
+            } else if (fieldNum === 4) { 
                 const [val, nextIdx] = readVarint(packetBytes, i);
                 document.getElementById('mesh-hop-limit').innerText = val;
                 i = nextIdx;
-            } else if (fieldNum === 7 && type === 2) { // encrypted/unencrypted inner payload variant
-                const len = packetBytes[i++];
+            } else if (fieldNum === 7 && type === 2) { 
+                const [len, nextIdx] = readVarint(packetBytes, i);
+                i = nextIdx;
                 const end = i + len;
                 parseDataPayload(packetBytes.subarray(i, end));
                 i = end;
@@ -316,12 +341,13 @@
             const fieldNum = key >> 3;
             i++;
 
-            if (fieldNum === 1) { // portnum identifying data payload structural variant
+            if (fieldNum === 1) { 
                 const [val, nextIdx] = readVarint(payloadBytes, i);
-                portnum = val; // Port 3 = Position payload identifier
+                portnum = val; 
                 i = nextIdx;
-            } else if (fieldNum === 2 && type === 2) { // payload bytes body payload
-                const len = payloadBytes[i++];
+            } else if (fieldNum === 2 && type === 2) { 
+                const [len, nextIdx] = readVarint(payloadBytes, i);
+                i = nextIdx;
                 innerData = payloadBytes.subarray(i, i + len);
                 i += len;
             } else {
@@ -329,7 +355,6 @@
             }
         }
 
-        // Portnum 3 corresponds exactly to Meshtastic default Positioning coordinates payloads
         if (portnum === 3 && innerData) {
             extractGPS(innerData);
         }
@@ -343,17 +368,17 @@
             const fieldNum = key >> 3;
             i++;
 
-            if (fieldNum === 1) { // latitude_i (scaled by 1e7)
+            if (fieldNum === 1) { 
                 const [val, nextIdx] = readVarint(gpsBytes, i);
                 const signedLat = (val << 0) / 10000000;
                 document.getElementById('gps-lat').innerText = signedLat.toFixed(6);
                 i = nextIdx;
-            } else if (fieldNum === 2) { // longitude_i (scaled by 1e7)
+            } else if (fieldNum === 2) { 
                 const [val, nextIdx] = readVarint(gpsBytes, i);
                 const signedLng = (val << 0) / 10000000;
                 document.getElementById('gps-lng').innerText = signedLng.toFixed(6);
                 i = nextIdx;
-            } else if (fieldNum === 3) { // altitude
+            } else if (fieldNum === 3) { 
                 const [val, nextIdx] = readVarint(gpsBytes, i);
                 document.getElementById('gps-alt').innerText = `${val} meters`;
                 i = nextIdx;
@@ -363,7 +388,6 @@
         }
     }
 
-    // Low-level helper variants to crawl across binary raw format blocks
     function readVarint(bytes, index) {
         let value = 0;
         let shift = 0;
@@ -377,14 +401,14 @@
     }
 
     function skipVarintField(bytes, index, type) {
-        if (type === 0) { // Varint
+        if (type === 0) { 
             while (index < bytes.length && (bytes[index++] & 0x80) !== 0);
-        } else if (type === 1) { // 64-bit
+        } else if (type === 1) { 
             index += 8;
-        } else if (type === 2) { // Length-delimited
+        } else if (type === 2) { 
             const [len, nextIdx] = readVarint(bytes, index);
             index = nextIdx + len;
-        } else if (type === 5) { // 32-bit
+        } else if (type === 5) { 
             index += 4;
         }
         return index;
@@ -392,5 +416,3 @@
 </script>
 </body>
 </html>
-
-```
