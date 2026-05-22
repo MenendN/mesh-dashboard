@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Passive Signal & GPS Logger</title>
+    <title>Mesh Database Sync</title>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -12,7 +12,6 @@
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --success: #22c55e;
-            --error: #ef4444;
         }
 
         body {
@@ -44,9 +43,10 @@
             font-weight: bold;
             padding: 4px 8px;
             border-radius: 6px;
+            background-color: #ef4444;
+            color: white;
         }
-        .status-connected { background-color: var(--success); color: white; }
-        .status-disconnected { background-color: var(--error); color: white; }
+        .status-connected { background-color: var(--success); }
 
         .btn {
             display: block;
@@ -62,10 +62,7 @@
             margin-bottom: 12px;
             text-align: center;
         }
-        .btn-secondary {
-            background-color: #475569;
-            color: white;
-        }
+        .btn-secondary { background-color: #475569; color: white; }
 
         .card {
             background-color: var(--card-bg);
@@ -80,17 +77,6 @@
             letter-spacing: 0.05em;
             color: var(--text-muted);
             margin-bottom: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .source-tag {
-            font-size: 0.7rem;
-            padding: 2px 6px;
-            border-radius: 4px;
-            background: #334155;
-            color: var(--accent);
         }
 
         .data-row {
@@ -100,11 +86,9 @@
             border-bottom: 1px solid #334155;
         }
         .data-row:last-child { border-bottom: none; }
-        .data-label { color: var(--text-muted); }
-        .data-value { font-weight: 500; font-family: monospace; }
 
         #console-log {
-            max-height: 220px;
+            max-height: 200px;
             overflow-y: auto;
             font-family: monospace;
             font-size: 0.8rem;
@@ -112,7 +96,6 @@
             padding: 12px;
             border-radius: 6px;
             color: #a7f3d0;
-            line-height: 1.5;
         }
     </style>
 </head>
@@ -120,35 +103,23 @@
 
 <div class="container">
     <header>
-        <h1>Heltec Passive Logger</h1>
-        <span id="conn-status" class="status-badge status-disconnected">OFFLINE</span>
+        <h1>Mesh Node Tracker</h1>
+        <span id="conn-status" class="status-badge">OFFLINE</span>
     </header>
 
     <button id="connect-btn" class="btn">Connect Heltec V3 via BLE</button>
     <button id="phone-gps-btn" class="btn btn-secondary">Use iPhone GPS Location</button>
 
     <div class="card">
-        <div class="card-title">
-            <span>GPS Coordinates</span>
-            <span id="gps-source" class="source-tag">No Data</span>
-        </div>
-        <div class="data-row">
-            <span class="data-label">Latitude</span>
-            <span id="gps-lat" class="data-value">Waiting...</span>
-        </div>
-        <div class="data-row">
-            <span class="data-label">Longitude</span>
-            <span id="gps-lng" class="data-value">Waiting...</span>
-        </div>
-        <div class="data-row">
-            <span class="data-label">Altitude</span>
-            <span id="gps-alt" class="data-value">Waiting...</span>
-        </div>
+        <div class="card-title">GPS Coordinates</div>
+        <div class="data-row"><span style="color:var(--text-muted)">Latitude</span><span id="gps-lat">Waiting...</span></div>
+        <div class="data-row"><span style="color:var(--text-muted)">Longitude</span><span id="gps-lng">Waiting...</span></div>
+        <div class="data-row"><span style="color:var(--text-muted)">Altitude</span><span id="gps-alt">Waiting...</span></div>
     </div>
 
     <div class="card">
-        <div class="card-title">Live Activity Console</div>
-        <div id="console-log">Ready. Connect hardware and trigger GPS location stream...</div>
+        <div class="card-title">Live Activity Log</div>
+        <div id="console-log">System ready. Connect hardware to begin...</div>
     </div>
 </div>
 
@@ -157,14 +128,11 @@
     const FROM_RADIO_UUIDS = ['f75c693e-1a21-40e8-94b5-17f05b7705c3', '2c55e69e-4993-11ed-b878-0242ac120002'];
 
     let selectedDevice = null;
-    let targetCharacteristic = null;
     let gpsWatchId = null;
-
     const consoleLog = document.getElementById('console-log');
     const connectBtn = document.getElementById('connect-btn');
     const phoneGpsBtn = document.getElementById('phone-gps-btn');
     const statusLabel = document.getElementById('conn-status');
-    const gpsSource = document.getElementById('gps-source');
 
     function displayLog(text) {
         const timeStr = new Date().toLocaleTimeString();
@@ -172,53 +140,10 @@
         consoleLog.scrollTop = consoleLog.scrollHeight;
     }
 
-    // Fixed & Restored Location Engine Logic
-    phoneGpsBtn.addEventListener('click', () => {
-        if (!navigator.geolocation) {
-            displayLog("Geolocation engine unsupported on this layout.");
-            return;
-        }
-
-        if (gpsWatchId !== null) {
-            navigator.geolocation.clearWatch(gpsWatchId);
-            gpsWatchId = null;
-            phoneGpsBtn.innerText = "Use iPhone GPS Location";
-            phoneGpsBtn.style.backgroundColor = "#475569";
-            gpsSource.innerText = "No Data";
-            displayLog("GPS location streaming stopped.");
-            return;
-        }
-
-        displayLog("Initializing tracking system hardware...");
-        gpsWatchId = navigator.geolocation.watchPosition(
-            (position) => {
-                gpsSource.innerText = "iPhone GPS";
-                document.getElementById('gps-lat').innerText = position.coords.latitude.toFixed(6);
-                document.getElementById('gps-lng').innerText = position.coords.longitude.toFixed(6);
-                document.getElementById('gps-alt').innerText = position.coords.altitude ? `${position.coords.altitude.toFixed(1)}m` : "Unavailable";
-            },
-            (err) => displayLog(`GPS Tracking Error: ${err.message}`),
-            { enableHighAccuracy: true }
-        );
-
-        phoneGpsBtn.innerText = "Stop iPhone GPS";
-        phoneGpsBtn.style.backgroundColor = "#e11d48";
-        displayLog("Live high-precision tracking actively updating.");
-    });
-
-    // High-speed background memory stream read engine loop
-    async function activateStreamPoller() {
-        async function readCycle() {
-            if (!selectedDevice || !selectedDevice.gatt.connected || !targetCharacteristic) return;
-            try {
-                const dataView = await targetCharacteristic.readValue();
-                if (dataView && dataView.byteLength > 0) {
-                    processRawBytes(new Uint8Array(dataView.buffer, dataView.byteOffset, dataView.byteLength));
-                }
-            } catch (err) {}
-            setTimeout(readCycle, 300); 
-        }
-        readCycle();
+    // Handles incoming data notification streams
+    function handleIncomingNotification(event) {
+        const buffer = new Uint8Array(event.target.value.buffer);
+        processRawBytes(buffer);
     }
 
     function processRawBytes(buffer) {
@@ -312,16 +237,39 @@
         }
 
         if (nodeIdentity !== "Unknown") {
-            const rssiString = computedRssi !== null ? `${computedRssi} dBm` : "-95 dBm (est)";
-            const snrString = computedSnr !== null ? `${computedSnr.toFixed(1)} SNR` : "1.8 SNR";
-            displayLog(`📡 PASSIVE INTR: Node ${nodeIdentity} -> RSSI: ${rssiString} | SNR: ${snrString}`);
+            const rssiString = computedRssi !== null ? `${computedRssi} dBm` : "Stored Data Frame";
+            const snrString = computedSnr !== null ? `${computedSnr.toFixed(1)} SNR` : "N/A";
+            displayLog(`📥 NODE SYNC: ID ${nodeIdentity} | RSSI: ${rssiString} | SNR: ${snrString}`);
         }
     }
+
+    // GPS tracking engine logic
+    phoneGpsBtn.addEventListener('click', () => {
+        if (!navigator.geolocation) return;
+        if (gpsWatchId !== null) {
+            navigator.geolocation.clearWatch(gpsWatchId);
+            gpsWatchId = null;
+            phoneGpsBtn.innerText = "Use iPhone GPS Location";
+            phoneGpsBtn.style.backgroundColor = "#475569";
+            return;
+        }
+        gpsWatchId = navigator.geolocation.watchPosition(
+            (position) => {
+                document.getElementById('gps-lat').innerText = position.coords.latitude.toFixed(6);
+                document.getElementById('gps-lng').innerText = position.coords.longitude.toFixed(6);
+                document.getElementById('gps-alt').innerText = position.coords.altitude ? `${position.coords.altitude.toFixed(1)}m` : "Unavailable";
+            },
+            (err) => displayLog(`GPS Error: ${err.message}`),
+            { enableHighAccuracy: true }
+        );
+        phoneGpsBtn.innerText = "Stop iPhone GPS";
+        phoneGpsBtn.style.backgroundColor = "#e11d48";
+    });
 
     connectBtn.addEventListener('click', async () => {
         if (!navigator.bluetooth) return;
         try {
-            displayLog("Scanning for device link...");
+            displayLog("Scanning for Heltec device link...");
             selectedDevice = await navigator.bluetooth.requestDevice({
                 filters: [{ services: [BLE_SERVICES[0]] }, { services: [BLE_SERVICES[1]] }]
             });
@@ -332,19 +280,36 @@
             for (const uuid of BLE_SERVICES) {
                 try { primarySvc = await connectionGatt.getPrimaryService(uuid); break; } catch (e) {}
             }
+
+            let fromRadioChar = null;
             for (const uuid of FROM_RADIO_UUIDS) {
-                try { targetCharacteristic = await primarySvc.getCharacteristic(uuid); break; } catch (e) {}
+                try { fromRadioChar = await primarySvc.getCharacteristic(uuid); break; } catch (e) {}
+            }
+
+            // Fallback strategy if notify actions trigger a firmware fault
+            try {
+                await fromRadioChar.startNotifications();
+                fromRadioChar.addEventListener('characteristicvaluechanged', handleIncomingNotification);
+                displayLog("Notification pipe open. Ready for background sync...");
+            } catch (notifyErr) {
+                displayLog("Notification subscription refused by firmware. Running loop engine instead.");
+                async function pollEngine() {
+                    if (!selectedDevice.gatt.connected) return;
+                    try {
+                        const val = await fromRadioChar.readValue();
+                        if (val && val.byteLength > 0) processRawBytes(new Uint8Array(val.buffer));
+                    } catch (e) {}
+                    setTimeout(pollEngine, 350);
+                }
+                pollEngine();
             }
 
             statusLabel.innerText = "CONNECTED";
             statusLabel.className = "status-badge status-connected";
             connectBtn.style.display = "none";
-            
-            displayLog("Listening to background radio buffers.");
-            activateStreamPoller();
 
         } catch (error) {
-            displayLog(`Error: ${error.message || error}`);
+            displayLog(`Link Error: ${error.message || error}`);
         }
     });
 </script>
