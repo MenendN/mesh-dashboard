@@ -64,8 +64,13 @@
             border-radius: 8px;
             font-size: 1rem;
             cursor: pointer;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
             text-align: center;
+        }
+
+        .btn-secondary {
+            background-color: #475569;
+            color: white;
         }
 
         .btn:active {
@@ -86,6 +91,17 @@
             letter-spacing: 0.05em;
             color: var(--text-muted);
             margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .source-tag {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: #334155;
+            color: var(--accent);
         }
 
         .data-row {
@@ -129,9 +145,13 @@
     </header>
 
     <button id="connect-btn" class="btn">Connect Heltec V3 via BLE</button>
+    <button id="phone-gps-btn" class="btn btn-secondary">Use iPhone GPS Location</button>
 
     <div class="card">
-        <div class="card-title">GPS Coordinates</div>
+        <div class="card-title">
+            <span>GPS Coordinates</span>
+            <span id="gps-source" class="source-tag">No Data</span>
+        </div>
         <div class="data-row">
             <span class="data-label">Latitude</span>
             <span id="gps-lat" class="data-value">Waiting...</span>
@@ -173,6 +193,7 @@
 </div>
 
 <script>
+    // Expanded mappings to prevent Service/Characteristic cross-matching mismatches
     const SERVICE_UUIDS = [
         'cb9b240e-9e5b-4699-953b-2faac16a17f1',
         '6ba1b218-15a8-461f-9fa8-5dcae273eafd'
@@ -183,18 +204,16 @@
         '2c55e69e-4993-11ed-b878-0242ac120002'
     ];
 
-    const FROM_NUM_UUIDS = [
-        'e0b2413e-ae8a-4cf3-a759-b1d619b0aa1f',
-        'ed9da18c-a800-4f66-a670-aa7547e34453'
-    ];
-
     let bleDevice = null;
     let fromRadioChar = null;
     let isPolling = false;
+    let watchId = null;
 
     const connectBtn = document.getElementById('connect-btn');
+    const phoneGpsBtn = document.getElementById('phone-gps-btn');
     const statusBadge = document.getElementById('connection-status');
     const logBox = document.getElementById('log-container');
+    const gpsSource = document.getElementById('gps-source');
 
     function logger(msg) {
         const time = new Date().toLocaleTimeString();
@@ -202,6 +221,55 @@
         logBox.scrollTop = logBox.scrollHeight;
     }
 
+    // iPhone Native GPS Handshake Engine
+    phoneGpsBtn.addEventListener('click', () => {
+        if (!navigator.geolocation) {
+            alert("Your browser environment does not support core geolocation frameworks.");
+            return;
+        }
+
+        if (watchId !== null) {
+            navigator.geolocation.clearWatch(watchId);
+            watchId = null;
+            phoneGpsBtn.innerText = "Use iPhone GPS Location";
+            phoneGpsBtn.style.backgroundColor = "#475569";
+            gpsSource.innerText = "No Data";
+            logger("iPhone GPS tracking engine halted.");
+            return;
+        }
+
+        logger("Requesting secure iOS CoreLocation permissions...");
+        
+        watchId = navigator.geolocation.watchPosition(
+            (position) => {
+                gpsSource.innerText = "iPhone GPS";
+                document.getElementById('gps-lat').innerText = position.coords.latitude.toFixed(6);
+                document.getElementById('gps-lng').innerText = position.coords.longitude.toFixed(6);
+                
+                if (position.coords.altitude !== null) {
+                    document.getElementById('gps-alt').innerText = `${position.coords.altitude.toFixed(1)} meters`;
+                } else {
+                    document.getElementById('gps-alt').innerText = "Unavailable";
+                }
+                
+                logger(`Location update polled natively from iPhone hardware.`);
+            },
+            (error) => {
+                logger(`GPS Error: ${error.message}`);
+                alert(`Could not acquire location: ${error.message}`);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
+
+        phoneGpsBtn.innerText = "Stop iPhone GPS";
+        phoneGpsBtn.style.backgroundColor = "#e11d48";
+    });
+
+    // Cross-firmware Bluetooth Pairing Engine
     connectBtn.addEventListener('click', async () => {
         if (!navigator.bluetooth) {
             alert("Web Bluetooth API not detected.");
@@ -230,38 +298,30 @@
                 } catch (e) { continue; }
             }
 
-            if (!primaryService) throw new Error("GATT service layout missing.");
+            if (!primaryService) throw new Error("GATT service architecture identification failure.");
 
             logger("Probing notify structures...");
             for (const uuid of FROM_RADIO_UUIDS) {
                 try {
                     fromRadioChar = await primaryService.getCharacteristic(uuid);
-                    logger(`Mapped pipeline: ${uuid.substring(0,8)}...`);
+                    logger(`Successfully matched pipeline characteristic: ${uuid.substring(0,8)}...`);
                     break;
                 } catch (e) { continue; }
             }
 
-            if (!fromRadioChar) throw new Error("FromRadio characteristic lookup failed.");
-
-            for (const uuid of FROM_NUM_UUIDS) {
-                try {
-                    const numChar = await primaryService.getCharacteristic(uuid);
-                    await numChar.startNotifications();
-                    break;
-                } catch (e) { continue; }
-            }
+            if (!fromRadioChar) throw new Error("FromRadio pipeline characteristic completely unavailable on this channel match.");
             
             statusBadge.innerText = "CONNECTED";
             statusBadge.className = "status-badge status-connected";
             connectBtn.style.display = "none";
 
             try {
-                logger("Attempting notification subscription...");
+                logger("Attempting stream subscription...");
                 await fromRadioChar.startNotifications();
-                fromRadioChar.addEventListener('characteristicvaluechanged', handleRadioData);
-                logger("Streaming active via direct notifications.");
+                fromRadioChar.addEventListener('characteristicvaluechanged', (e) => processIncomingBytes(e.target.value));
+                logger("Streaming active via direct firmware notifications.");
             } catch (notifyErr) {
-                logger("Notify rejected by firmware. Deploying safe polling engine loop instead...");
+                logger("Notification pipe rejected. Initiating backup polling loop framework...");
                 startFallbackPolling();
             }
 
@@ -285,16 +345,10 @@
                 if (view && view.byteLength > 0) {
                     processIncomingBytes(view);
                 }
-            } catch (e) {
-                // Silently swallow empty buffer cycles to prevent log pollution
-            }
-            setTimeout(poll, 800); // Check pipeline buffer every 800ms
+            } catch (e) {}
+            setTimeout(poll, 800);
         }
         poll();
-    }
-
-    function handleRadioData(event) {
-        processIncomingBytes(event.target.value);
     }
 
     function processIncomingBytes(view) {
@@ -383,7 +437,8 @@
             }
         }
 
-        if (portnum === 3 && innerData) {
+        // Only parse incoming GPS packet positions if phone location is inactive
+        if (portnum === 3 && innerData && watchId === null) {
             extractGPS(innerData);
         }
     }
@@ -400,11 +455,13 @@
                 const [val, nextIdx] = readVarint(gpsBytes, i);
                 const signedLat = (val << 0) / 10000000;
                 document.getElementById('gps-lat').innerText = signedLat.toFixed(6);
+                gpsSource.innerText = "Node Mesh";
                 i = nextIdx;
             } else if (fieldNum === 2) { 
                 const [val, nextIdx] = readVarint(gpsBytes, i);
                 const signedLng = (val << 0) / 10000000;
                 document.getElementById('gps-lng').innerText = signedLng.toFixed(6);
+                gpsSource.innerText = "Node Mesh";
                 i = nextIdx;
             } else if (fieldNum === 3) { 
                 const [val, nextIdx] = readVarint(gpsBytes, i);
