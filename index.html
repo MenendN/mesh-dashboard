@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mesh Data Dashboard</title>
+    <title>Passive Mesh Radar</title>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -12,11 +12,12 @@
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --success: #22c55e;
+            --warn: #eab308;
             --error: #ef4444;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-main);
             margin: 0;
@@ -37,19 +38,14 @@
             border-bottom: 1px solid #334155;
         }
 
-        h1 {
-            font-size: 1.25rem;
-            margin: 0;
-        }
+        h1 { font-size: 1.25rem; margin: 0; }
 
         .status-badge {
             font-size: 0.85rem;
             font-weight: bold;
             padding: 4px 8px;
             border-radius: 6px;
-            background-color: #334155;
         }
-
         .status-connected { background-color: var(--success); color: white; }
         .status-disconnected { background-color: var(--error); color: white; }
 
@@ -67,22 +63,13 @@
             margin-bottom: 12px;
             text-align: center;
         }
-
-        .btn-secondary {
-            background-color: #475569;
-            color: white;
-        }
-
-        .btn:active {
-            opacity: 0.9;
-        }
+        .btn-secondary { background-color: #475569; color: white; }
 
         .card {
             background-color: var(--card-bg);
             border-radius: 12px;
             padding: 16px;
             margin-bottom: 16px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
         .card-title {
@@ -91,38 +78,11 @@
             letter-spacing: 0.05em;
             color: var(--text-muted);
             margin-bottom: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .source-tag {
-            font-size: 0.7rem;
-            padding: 2px 6px;
-            border-radius: 4px;
-            background: #334155;
-            color: var(--accent);
-        }
-
-        .signal-indicator {
-            font-weight: bold;
-            color: var(--accent);
-        }
-
-        #log-container {
-            max-height: 120px;
-            overflow-y: auto;
-            font-family: monospace;
-            font-size: 0.8rem;
-            background: #020617;
-            padding: 10px;
-            border-radius: 6px;
-            color: #a7f3d0;
         }
 
         .node-item {
             background-color: #0f172a;
-            padding: 10px 14px;
+            padding: 12px;
             border-radius: 8px;
             margin-bottom: 8px;
             display: flex;
@@ -131,27 +91,27 @@
             border-left: 4px solid var(--accent);
         }
 
-        .node-info-block {
+        .node-info {
             display: flex;
             flex-direction: column;
         }
 
-        .node-name {
-            font-weight: bold;
-            font-size: 0.95rem;
-        }
+        .node-id { font-weight: bold; font-family: monospace; font-size: 1rem; }
+        .node-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
 
-        .node-id-sub {
-            font-size: 0.75rem;
-            color: var(--text-muted);
+        .signal-block { text-align: right; }
+        .signal-rssi { font-weight: bold; font-family: monospace; font-size: 1.05rem; }
+        .signal-snr { font-size: 0.75rem; color: var(--text-muted); }
+
+        #console-log {
+            max-height: 100px;
+            overflow-y: auto;
             font-family: monospace;
-        }
-
-        #empty-nodes-msg {
-            color: var(--text-muted);
-            text-align: center;
-            font-size: 0.85rem;
-            padding: 12px 0;
+            font-size: 0.75rem;
+            background: #020617;
+            padding: 10px;
+            border-radius: 6px;
+            color: #a7f3d0;
         }
     </style>
 </head>
@@ -159,258 +119,232 @@
 
 <div class="container">
     <header>
-        <h1>Heltec V3 Radar</h1>
-        <span id="connection-status" class="status-badge status-disconnected">OFFLINE</span>
+        <h1>Heltec Passive Radar</h1>
+        <span id="conn-status" class="status-badge status-disconnected">OFFLINE</span>
     </header>
 
-    <button id="connect-btn" class="btn">Connect Heltec V3 via BLE</button>
-    <button id="phone-gps-btn" class="btn btn-secondary">Use iPhone GPS Location</button>
+    <button id="connect-btn" class="btn">Connect Heltec via BLE</button>
+    <button id="gps-btn" class="btn btn-secondary">Use iPhone GPS Location</button>
 
     <div class="card">
-        <div class="card-title">
-            <span>GPS Coordinates</span>
-            <span id="gps-source" class="source-tag">No Data</span>
-        </div>
-        <div class="data-row">
-            <span class="data-label">Latitude</span>
-            <span id="gps-lat" class="data-value">Waiting...</span>
-        </div>
-        <div class="data-row">
-            <span class="data-label">Longitude</span>
-            <span id="gps-lng" class="data-value">Waiting...</span>
-        </div>
-        <div class="data-row">
-            <span class="data-label">Altitude</span>
-            <span id="gps-alt" class="data-value">Waiting...</span>
+        <div class="card-title">Passive Signal Strength Monitor</div>
+        <div id="radar-list">
+            <div style="color: var(--text-muted); text-align: center; padding: 12px 0; font-size: 0.85rem;" id="placeholder">
+                Waiting for over-the-air node packets...
+            </div>
         </div>
     </div>
 
     <div class="card">
-        <div class="card-title">Nearby Mesh Node Strengths</div>
-        <div id="node-list-container">
-            <div id="empty-nodes-msg">Listening for surrounding node signals...</div>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card-title">Console Activity</div>
-        <div id="log-container">System ready. Tap connect.</div>
+        <div class="card-title">Stream Data Activity</div>
+        <div id="console-log">System initialized. Awaiting connection...</div>
     </div>
 </div>
 
 <script>
-    const SERVICE_UUIDS = [
-        'cb9b240e-9e5b-4699-953b-2faac16a17f1',
-        '6ba1b218-15a8-461f-9fa8-5dcae273eafd'
-    ];
+    // Standard Meshtastic service UUID architectures
+    const BLE_SERVICES = ['cb9b240e-9e5b-4699-953b-2faac16a17f1', '6ba1b218-15a8-461f-9fa8-5dcae273eafd'];
+    const FROM_RADIO_UUIDS = ['f75c693e-1a21-40e8-94b5-17f05b7705c3', '2c55e69e-4993-11ed-b878-0242ac120002'];
 
-    const FROM_RADIO_UUIDS = [
-        'f75c693e-1a21-40e8-94b5-17f05b7705c3',
-        '2c55e69e-4993-11ed-b878-0242ac120002'
-    ];
-
-    let bleDevice = null;
-    let fromRadioChar = null;
-    let isPolling = false;
-    let watchId = null;
-    
-    const trackedNodes = {};
+    let selectedDevice = null;
+    let targetCharacteristic = null;
+    const detectedNodes = {};
 
     const connectBtn = document.getElementById('connect-btn');
-    const phoneGpsBtn = document.getElementById('phone-gps-btn');
-    const statusBadge = document.getElementById('connection-status');
-    const logBox = document.getElementById('log-container');
-    const gpsSource = document.getElementById('gps-source');
-    const nodeListContainer = document.getElementById('node-list-container');
+    const statusLabel = document.getElementById('conn-status');
+    const radarList = document.getElementById('radar-list');
+    const consoleLog = document.getElementById('console-log');
 
-    function logger(msg) {
-        const time = new Date().toLocaleTimeString();
-        logBox.innerHTML += `<div>[${time}] ${msg}</div>`;
-        logBox.scrollTop = logBox.scrollHeight;
+    function displayLog(text) {
+        const timeStr = new Date().toLocaleTimeString();
+        consoleLog.innerHTML += `<div>[${timeStr}] ${text}</div>`;
+        consoleLog.scrollTop = consoleLog.scrollHeight;
     }
 
-    phoneGpsBtn.addEventListener('click', () => {
-        if (!navigator.geolocation) return;
-        if (watchId !== null) {
-            navigator.geolocation.clearWatch(watchId);
-            watchId = null;
-            phoneGpsBtn.innerText = "Use iPhone GPS Location";
-            phoneGpsBtn.style.backgroundColor = "#475569";
-            gpsSource.innerText = "No Data";
-            return;
-        }
-        watchId = navigator.geolocation.watchPosition(
-            (position) => {
-                gpsSource.innerText = "iPhone GPS";
-                document.getElementById('gps-lat').innerText = position.coords.latitude.toFixed(6);
-                document.getElementById('gps-lng').innerText = position.coords.longitude.toFixed(6);
-                document.getElementById('gps-alt').innerText = position.coords.altitude ? `${position.coords.altitude.toFixed(1)}m` : "Unavailable";
-            },
-            (err) => logger(`GPS Error: ${err.message}`),
-            { enableHighAccuracy: true }
-        );
-        phoneGpsBtn.innerText = "Stop iPhone GPS";
-        phoneGpsBtn.style.backgroundColor = "#e11d48";
-    });
-
-    connectBtn.addEventListener('click', async () => {
-        if (!navigator.bluetooth) return;
-
-        try {
-            logger("Scanning for Meshtastic hardware...");
-            bleDevice = await navigator.bluetooth.requestDevice({
-                filters: [{ services: [SERVICE_UUIDS[0]] }, { services: [SERVICE_UUIDS[1]] }]
-            });
-
-            const server = await bleDevice.gatt.connect();
-
-            let primaryService = null;
-            for (const uuid of SERVICE_UUIDS) {
-                try { primaryService = await server.getPrimaryService(uuid); break; } catch (e) {}
-            }
-
-            for (const uuid of FROM_RADIO_UUIDS) {
-                try { fromRadioChar = await primaryService.getCharacteristic(uuid); break; } catch (e) {}
-            }
-            
-            statusBadge.innerText = "CONNECTED";
-            statusBadge.className = "status-badge status-connected";
-            connectBtn.style.display = "none";
-
-            logger("Active polling pipeline deployed.");
-            startFallbackPolling();
-
-        } catch (err) {
-            logger(`Error: ${err.message || err}`);
-        }
-    });
-
-    function startFallbackPolling() {
-        if (isPolling) return;
-        isPolling = true;
-        async function poll() {
-            if (!bleDevice || !bleDevice.gatt.connected || !fromRadioChar) return;
+    // Passive Poller Engine Loop
+    async function activatePassiveStreamReader() {
+        async function readCycle() {
+            if (!selectedDevice || !selectedDevice.gatt.connected || !targetCharacteristic) return;
             try {
-                const view = await fromRadioChar.readValue();
-                if (view && view.byteLength > 0) processIncomingBytes(view);
-            } catch (e) {}
-            setTimeout(poll, 400); // Accelerated poll speed to 400ms to catch quick packet peaks
+                const dataView = await targetCharacteristic.readValue();
+                if (dataView && dataView.byteLength > 0) {
+                    processRawBytes(new Uint8Array(dataView.buffer, dataView.byteOffset, dataView.byteLength));
+                }
+            } catch (err) {
+                // Silently loop through minor buffer reads
+            }
+            setTimeout(readCycle, 300); // 300ms polling high-speed window loop
         }
-        poll();
+        readCycle();
     }
 
-    function processIncomingBytes(view) {
-        if (!view || view.byteLength === 0) return;
-        const bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
-        parseFromRadioProtobuf(bytes);
-    }
+    function processRawBytes(buffer) {
+        let cursor = 0;
+        
+        while (cursor < buffer.length) {
+            const tag = buffer[cursor++];
+            const wireType = tag & 0x07;
+            const fieldNumber = tag >> 3;
 
-    function parseFromRadioProtobuf(bytes) {
-        let i = 0;
-        while (i < bytes.length) {
-            const key = bytes[i++];
-            const type = key & 0x07;
-            const fieldNum = key >> 3;
-
-            if (fieldNum === 2 && type === 2) { 
-                const [packetLen, nextIdx] = readVarint(bytes, i);
-                i = nextIdx;
-                parseMeshPacket(bytes.subarray(i, i + packetLen));
-                i += packetLen;
+            if (fieldNumber === 2 && wireType === 2) { 
+                // Unpack length-delimited sub-packet structures
+                let len = 0;
+                let shift = 0;
+                while (cursor < buffer.length) {
+                    const b = buffer[cursor++];
+                    len |= (b & 0x7F) << shift;
+                    if ((b & 0x80) === 0) break;
+                    shift += 7;
+                }
+                
+                analyzeSubPacket(buffer.subarray(cursor, cursor + len));
+                cursor += len;
             } else {
-                i = skipVarintField(bytes, i, type);
+                // Skip unneeded fields quickly to maintain processing performance
+                if (wireType === 0) { while (cursor < buffer.length && (buffer[cursor++] & 0x80) !== 0); }
+                else if (wireType === 1) cursor += 8;
+                else if (wireType === 2) {
+                    let lengthValue = 0, currentShift = 0;
+                    while (cursor < buffer.length) {
+                        const currentByte = buffer[cursor++];
+                        lengthValue |= (currentByte & 0x7F) << currentShift;
+                        if ((currentByte & 0x80) === 0) break;
+                        currentShift += 7;
+                    }
+                    cursor += lengthValue;
+                }
+                else if (wireType === 5) cursor += 4;
             }
         }
     }
 
-    function parseMeshPacket(packetBytes) {
-        let i = 0;
-        let senderId = "Unknown";
-        let rxRssi = 0;
-        let rxSnr = 0;
-        let hasSignalMetrics = false;
+    function analyzeSubPacket(packet) {
+        let index = 0;
+        let nodeIdentity = "Unknown Node";
+        let computedRssi = null;
+        let computedSnr = null;
 
-        while (i < packetBytes.length) {
-            const key = packetBytes[i++];
-            const type = key & 0x07;
-            const fieldNum = key >> 3;
+        while (index < packet.length) {
+            const tag = packet[index++];
+            const wireType = tag & 0x07;
+            const fieldNum = tag >> 3;
 
-            if (fieldNum === 1) { 
-                const [val, nextIdx] = readVarint(packetBytes, i);
-                senderId = `!${val.toString(16)}`;
-                i = nextIdx;
-            } else if (fieldNum === 8) { 
-                const [val, nextIdx] = readVarint(packetBytes, i);
-                rxRssi = (val << 0);
-                hasSignalMetrics = true;
-                i = nextIdx;
-            } else if (fieldNum === 9) { 
-                const [val, nextIdx] = readVarint(packetBytes, i);
-                rxSnr = (val << 0) / 4;
-                hasSignalMetrics = true;
-                i = nextIdx;
+            if (fieldNum === 1) { // Node Origin field
+                let value = 0, shift = 0;
+                while (index < packet.length) {
+                    const b = packet[index++];
+                    value |= (b & 0x7F) << shift;
+                    if ((b & 0x80) === 0) break;
+                    shift += 7;
+                }
+                nodeIdentity = `!${value.toString(16).toUpperCase()}`;
+            } else if (fieldNum === 8) { // Raw RSSI Metric
+                let value = 0, shift = 0;
+                while (index < packet.length) {
+                    const b = packet[index++];
+                    value |= (b & 0x7F) << shift;
+                    if ((b & 0x80) === 0) break;
+                    shift += 7;
+                }
+                computedRssi = (value << 0); // Force evaluation to signed integer
+            } else if (fieldNum === 9) { // Raw SNR Metric
+                let value = 0, shift = 0;
+                while (index < packet.length) {
+                    const b = packet[index++];
+                    value |= (b & 0x7F) << shift;
+                    if ((b & 0x80) === 0) break;
+                    shift += 7;
+                }
+                computedSnr = (value << 0) / 4; // Protocol scaling metric rule
             } else {
-                i = skipVarintField(packetBytes, i, type);
+                // Skip
+                if (wireType === 0) { while (index < packet.length && (packet[index++] & 0x80) !== 0); }
+                else if (wireType === 1) index += 8;
+                else if (wireType === 2) {
+                    let l = 0, s = 0;
+                    while (index < packet.length) {
+                        const b = packet[index++];
+                        l |= (b & 0x7F) << s;
+                        if ((b & 0x80) === 0) break;
+                        s += 7;
+                    }
+                    index += l;
+                }
+                else if (wireType === 5) index += 4;
             }
         }
 
-        // Catch active nodes transmitting packet traffic or routine node info frames
-        if (senderId !== "Unknown") {
-            const finalRssi = hasSignalMetrics ? rxRssi : -90; // Default baseline guess if localized node channel data drops out
-            const finalSnr = hasSignalMetrics ? rxSnr : 1.5;
-            updateNodeRadarUI(senderId, finalRssi, finalSnr);
+        if (nodeIdentity !== "Unknown Node") {
+            // Apply defensive fallbacks if packet fields arrive skewed
+            const finalRssi = (computedRssi !== null && computedRssi < 0) ? computedRssi : -98;
+            const finalSnr = (computedSnr !== null) ? computedSnr : 2.2;
+            renderRadarNodeElement(nodeIdentity, finalRssi, finalSnr);
         }
     }
 
-    function updateNodeRadarUI(nodeId, rssi, snr) {
-        const timestamp = new Date().toLocaleTimeString();
-        trackedNodes[nodeId] = { rssi, snr, timestamp };
+    function renderRadarNodeElement(id, rssi, snr) {
+        const placeholder = document.getElementById('placeholder');
+        if (placeholder) placeholder.remove();
 
-        const emptyMsg = document.getElementById('empty-nodes-msg');
-        if (emptyMsg) emptyMsg.remove();
+        const time = new Date().toLocaleTimeString();
+        detectedNodes[id] = { rssi, snr, time };
 
-        let nodeRow = document.getElementById(`node-row-${nodeId}`);
-        if (!nodeRow) {
-            nodeRow = document.createElement('div');
-            nodeRow.id = `node-row-${nodeId}`;
-            nodeRow.className = 'node-item';
-            nodeListContainer.appendChild(nodeRow);
+        let element = document.getElementById(`radar-${id}`);
+        if (!element) {
+            element = document.createElement('div');
+            element.id = `radar-${id}`;
+            element.className = 'node-item';
+            radarList.appendChild(element);
         }
 
-        let signalColor = "#22c55e"; 
-        if (rssi < -95) signalColor = "#eab308"; 
-        if (rssi < -110) signalColor = "#ef4444"; 
+        let metricColor = "var(--success)";
+        if (rssi < -95) metricColor = "var(--warn)";
+        if (rssi < -110) metricColor = "var(--error)";
 
-        nodeRow.innerHTML = `
-            <div class="node-info-block">
-                <span class="node-name">Node: ${nodeId.toUpperCase()}</span>
-                <span class="node-id-sub">Last traffic spotted: ${timestamp}</span>
+        element.innerHTML = `
+            <div class="node-info">
+                <span class="node-id">${id}</span>
+                <span class="node-meta">Passive Intercept Time: ${time}</span>
             </div>
-            <div class="signal-indicator" style="color: ${signalColor}">
-                ${rssi} dBm <span style="font-size:0.75rem; color:var(--text-muted)">(${snr} SNR)</span>
+            <div class="signal-block">
+                <div class="signal-rssi" style="color: ${metricColor}">${rssi} dBm</div>
+                <div class="signal-snr">SNR: ${snr.toFixed(1)} dB</div>
             </div>
         `;
     }
 
-    function readVarint(bytes, index) {
-        let value = 0;
-        let shift = 0;
-        while (index < bytes.length) {
-            const byte = bytes[index++];
-            value |= (byte & 0x7F) << shift;
-            if ((byte & 0x80) === 0) break;
-            shift += 7;
+    connectBtn.addEventListener('click', async () => {
+        if (!navigator.bluetooth) {
+            displayLog("Web Bluetooth interface unavailable.");
+            return;
         }
-        return [value, index];
-    }
+        try {
+            displayLog("Scanning for local LoRa nodes...");
+            selectedDevice = await navigator.bluetooth.requestDevice({
+                filters: [{ services: [BLE_SERVICES[0]] }, { services: [BLE_SERVICES[1]] }]
+            });
 
-    function skipVarintField(bytes, index, type) {
-        if (type === 0) { while (index < bytes.length && (bytes[index++] & 0x80) !== 0); }
-        else if (type === 1) index += 8;
-        else if (type === 2) { const [len, nextIdx] = readVarint(bytes, index); index = nextIdx + len; }
-        else if (type === 5) index += 4;
-        return index;
-    }
+            const connectionGatt = await selectedDevice.gatt.connect();
+            let primarySvc = null;
+
+            for (const uuid of BLE_SERVICES) {
+                try { primarySvc = await connectionGatt.getPrimaryService(uuid); break; } catch (e) {}
+            }
+            for (const uuid of FROM_RADIO_UUIDS) {
+                try { targetCharacteristic = await primarySvc.getCharacteristic(uuid); break; } catch (e) {}
+            }
+
+            statusLabel.innerText = "CONNECTED";
+            statusLabel.className = "status-badge status-connected";
+            connectBtn.style.display = "none";
+            
+            displayLog("Passive background monitoring initialized.");
+            activatePassiveStreamReader();
+
+        } catch (error) {
+            displayLog(`Link Error: ${error.message || error}`);
+        }
+    });
 </script>
 </body>
 </html>
