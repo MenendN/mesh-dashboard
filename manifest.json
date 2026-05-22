@@ -1,1 +1,8 @@
-
+{
+  "name": "Mesh Radar",
+  "short_name": "MeshRadar",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#38bdf8"
+}
