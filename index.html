@@ -2,444 +2,306 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>PokéMesh Fixed</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PokéMesh</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
-*{
-  box-sizing:border-box;
-  margin:0;
-  padding:0;
-}
-
 body{
-  font-family:sans-serif;
-  background:#111827;
-  color:white;
-  height:100dvh;
+  margin:0;
+  font-family:-apple-system,sans-serif;
+  background:#1a1a2e;
+  color:#fff;
   overflow:hidden;
 }
 
-.hidden{
-  display:none!important;
-}
-
-#starter-screen,
-#game-screen{
-  position:absolute;
-  inset:0;
-}
-
-#starter-screen{
+/* TOP */
+#topbar{
   display:flex;
+  gap:6px;
+  padding:8px;
+  background:#0f1117;
+}
+#topbar button{
+  font-size:11px;
+  padding:6px 10px;
+  border:none;
+  border-radius:10px;
+  color:#fff;
+  background:#2a2d3a;
+}
+#topbar .logo{
+  flex:1;
+  color:#FFD700;
+  font-weight:800;
+}
+
+/* LAYOUT */
+#wrap{
+  display:grid;
+  grid-template-rows: 55vh 45vh;
+  height:100vh;
+}
+
+/* PANEL */
+#panel{
+  padding:8px;
+  overflow:auto;
+}
+
+/* PARTY */
+#party{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:6px;
+}
+.card{
+  background:#0f1117;
+  padding:6px;
+  border-radius:10px;
+  text-align:center;
+}
+.card img{width:48px}
+.active{outline:2px solid gold}
+
+/* BALLS */
+#balls{
+  margin-top:6px;
+  font-size:11px;
+  color:#aaa;
+}
+
+/* INFO */
+#info{
+  margin-top:6px;
+  font-size:11px;
+  color:#aaa;
+}
+
+/* NODES */
+#nodes{
+  margin-top:8px;
+  background:#0f1117;
+  padding:6px;
+  border-radius:10px;
+  max-height:120px;
+  overflow:auto;
+}
+.node{
+  font-size:10px;
+  padding:4px;
+  border-bottom:1px solid #222;
+  display:flex;
+  justify-content:space-between;
+}
+
+/* MAP */
+#map{height:45vh}
+
+/* BATTLE */
+#battle{
+  position:fixed;
+  inset:0;
+  background:#000d;
+  display:none;
   flex-direction:column;
   align-items:center;
   justify-content:center;
-  gap:20px;
 }
-
-#starter-grid{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:10px;
-  width:320px;
-}
-
-.starter-card{
-  background:#1f2937;
-  border:1px solid #374151;
-  border-radius:12px;
-  padding:10px;
-  text-align:center;
-  cursor:pointer;
-}
-
-.starter-card img{
-  width:72px;
-  height:72px;
-  image-rendering:pixelated;
-}
-
-#topbar{
-  height:56px;
-  background:#0f172a;
-  display:flex;
-  align-items:center;
-  padding:0 16px;
-  border-bottom:1px solid #1f2937;
-  z-index:50;
-  position:relative;
-}
-
-.logo{
-  font-weight:700;
-  color:#FFD700;
-}
-
-#field-area{
-  position:absolute;
-  top:56px;
-  left:0;
-  right:0;
-  bottom:70px;
-  background:linear-gradient(#87CEEB 0%,#87CEEB 55%,#4a8a3a 55%);
-  overflow:hidden;
-}
-
-#field-mons{
-  position:absolute;
-  top:0;
-  left:0;
-  right:0;
-  bottom:33%;
-}
-
-.field-mon{
-  position:absolute;
-  bottom:40px;
-  left:50%;
-  transform:translateX(-50%);
-  text-align:center;
-}
-
-.field-mon img{
-  width:72px;
-  height:72px;
-  image-rendering:pixelated;
-}
-
-.field-mon div{
-  margin-top:8px;
-  font-size:18px;
-}
-
-#map-overlay{
-  position:absolute;
-  left:0;
-  right:0;
-  bottom:0;
-  height:33%;
-  z-index:20;
-  border-top:2px solid #1f2937;
-  overflow:hidden;
-  background:#000;
-}
-
-#map{
-  width:100%;
-  height:100%;
-}
-
-#bottom-nav{
-  position:absolute;
-  bottom:0;
-  left:0;
-  right:0;
-  height:70px;
-  background:#0f172a;
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-  border-top:1px solid #1f2937;
-  z-index:100;
-}
-
-.nav-btn{
-  background:none;
-  border:none;
-  color:#9ca3af;
-  font-size:12px;
-  cursor:pointer;
-}
-
-.nav-btn.active{
-  color:#FFD700;
-}
-
-.modal{
-  position:absolute;
-  inset:0;
-  z-index:120;
-  background:#111827;
-}
-
-.modal-header{
-  height:60px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:0 16px;
-  border-bottom:1px solid #1f2937;
-}
-
-.modal-body{
-  padding:16px;
-  overflow-y:auto;
-  height:calc(100% - 60px);
-}
-
-#node-toast{
-  position:absolute;
-  top:20px;
-  left:50%;
-  transform:translateX(-50%);
-  background:#10b981;
-  color:white;
-  padding:10px 18px;
-  border-radius:999px;
-  z-index:999;
-  opacity:0;
-  transition:.25s;
-}
-
-#node-toast.show{
-  opacity:1;
+#battle.active{display:flex}
+#log{margin-top:10px;font-size:12px}
+button.move{
+  margin:4px;
+  padding:6px 10px;
 }
 </style>
 </head>
 
 <body>
 
-<div id="starter-screen">
-  <h1>⚡ PokéMesh</h1>
-  <div id="starter-grid"></div>
-</div>
-
-<div id="game-screen" class="hidden">
+<div id="wrap">
 
   <div id="topbar">
     <div class="logo">⚡ PokéMesh</div>
+    <button onclick="save()">💾 Save</button>
+    <button onclick="connectBLE()">BLE</button>
   </div>
 
-  <div id="field-area">
+  <div id="panel">
 
-    <div id="field-mons"></div>
+    <div id="party"></div>
 
-    <div id="map-overlay">
-      <div id="map"></div>
-    </div>
+    <div id="balls">Balls: <span id="balltxt"></span></div>
+
+    <div id="info">Nodes: <span id="nodecount">0</span></div>
+
+    <div id="nodes"></div>
 
   </div>
 
-  <div id="bottom-nav">
-    <button class="nav-btn active" id="nav-field">🌿<br>Field</button>
-    <button class="nav-btn" id="nav-map">🗺️<br>Map</button>
-    <button class="nav-btn" id="nav-storage">📦<br>Storage</button>
-    <button class="nav-btn" id="nav-dex">📖<br>Dex</button>
-  </div>
-
-  <div id="storage-modal" class="modal hidden">
-    <div class="modal-header">
-      <h2>Storage</h2>
-      <button id="close-storage">✕</button>
-    </div>
-    <div class="modal-body">
-      PC Storage
-    </div>
-  </div>
-
-  <div id="dex-modal" class="modal hidden">
-    <div class="modal-header">
-      <h2>Pokédex</h2>
-      <button id="close-dex">✕</button>
-    </div>
-    <div class="modal-body">
-      Pokédex Entries
-    </div>
-  </div>
+  <div id="map"></div>
 
 </div>
 
-<div id="node-toast"></div>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- BATTLE -->
+<div id="battle">
+  <img id="wild" width="96"/>
+  <div id="log">Battle</div>
+  <div id="moves"></div>
+  <button onclick="closeBattle()">Run</button>
+</div>
 
 <script>
-window.onerror=function(msg,src,line,col,error){
-  console.error(error||msg);
-  alert("ERROR: "+msg+" @ line "+line);
+/* ---------------- STATE ---------------- */
+let party=[];
+let active=0;
+let balls={poke:5,great:0,ultra:0,master:0};
+let nodes={};
+let map,marker;
+let inBattle=false;
+let wild=null;
+
+/* ---------------- DATA ---------------- */
+const BALLS={
+ poke:{w:70},great:{w:22},ultra:{w:7},master:{w:1}
 };
 
-const STARTERS=[
-  {id:1,name:'Bulbasaur'},
-  {id:4,name:'Charmander'},
-  {id:7,name:'Squirtle'},
-  {id:25,name:'Pikachu'},
-  {id:133,name:'Eevee'},
-  {id:122,name:'Mr Mime'}
-];
+const MOVES={
+ tackle:{p:40},ember:{p:40},water:{p:40},thunder:{p:40},bite:{p:60}
+};
 
-const spriteUrl=id =>
-  `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
+const SETS={
+ 25:['thunder','tackle','bite','bite'],
+ 1:['tackle','bite','tackle','bite']
+};
 
-let map=null;
+/* ---------------- INIT ---------------- */
+function start(){
+  party=[mon(25)];
+  map=L.map('map').setView([47.62,-122.33],13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+  render();
+}
+start();
 
-function showToast(msg){
-  const t=document.getElementById('node-toast');
-
-  t.textContent=msg;
-  t.classList.add('show');
-
-  setTimeout(()=>{
-    t.classList.remove('show');
-  },3000);
+/* ---------------- MON ---------------- */
+function mon(id){
+  return {
+    id,
+    name:"Mon "+id,
+    hp:100,
+    max:100,
+    moves:(SETS[id]||['tackle','bite','tackle','bite']).map(m=>({...MOVES[m],name:m,pp:10,pp_left:10}))
+  }
 }
 
-function buildStarterGrid(){
+/* ---------------- UI ---------------- */
+function render(){
+  const p=document.getElementById("party");
+  p.innerHTML="";
+  party.forEach((m,i)=>{
+    const d=document.createElement("div");
+    d.className="card"+(i==active?" active":"");
+    d.innerHTML=`<img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${m.id}.png">
+    <div>${m.name}</div>`;
+    d.onclick=()=>active=i;
+    p.appendChild(d);
+  });
 
-  const grid=document.getElementById('starter-grid');
+  document.getElementById("balltxt").innerText=JSON.stringify(balls);
+  document.getElementById("nodecount").innerText=Object.keys(nodes).length;
 
-  grid.innerHTML='';
-
-  STARTERS.forEach(mon=>{
-
-    const card=document.createElement('div');
-
-    card.className='starter-card';
-
-    card.innerHTML=`
-      <img src="${spriteUrl(mon.id)}">
-      <div>${mon.name}</div>
-    `;
-
-    card.addEventListener('click',()=>{
-      startGame(mon);
-    });
-
-    grid.appendChild(card);
+  const n=document.getElementById("nodes");
+  n.innerHTML="";
+  Object.keys(nodes).forEach(k=>{
+    let d=document.createElement("div");
+    d.className="node";
+    d.innerHTML=`<span>${k}</span><span>📡</span>`;
+    n.appendChild(d);
   });
 }
 
-function startGame(mon){
-
-  document.getElementById('starter-screen')
-    .classList.add('hidden');
-
-  document.getElementById('game-screen')
-    .classList.remove('hidden');
-
-  renderField(mon);
-
-  initMap();
-
-  showToast(mon.name + " chosen!");
+/* ---------------- SAVE ---------------- */
+function save(){
+  localStorage.setItem("pokemesh",JSON.stringify({party,balls,nodes}));
 }
 
-function renderField(mon){
+/* ---------------- LOAD ---------------- */
+(function(){
+  let s=localStorage.getItem("pokemesh");
+  if(s){
+    let d=JSON.parse(s);
+    party=d.party||[];
+    balls=d.balls||balls;
+    nodes=d.nodes||{};
+  }
+})();
 
-  const field=document.getElementById('field-mons');
+/* ---------------- BATTLE ---------------- */
+function battle(){
+  if(inBattle)return;
+  inBattle=true;
+  wild={hp:80,name:"Wild Mon"};
+  document.getElementById("battle").classList.add("active");
 
-  field.innerHTML='';
+  const m=document.getElementById("moves");
+  m.innerHTML="";
 
-  const div=document.createElement('div');
-
-  div.className='field-mon';
-
-  div.innerHTML=`
-    <img src="${spriteUrl(mon.id)}">
-    <div>${mon.name}</div>
-  `;
-
-  field.appendChild(div);
+  party[active].moves.forEach((mv,i)=>{
+    let b=document.createElement("button");
+    b.className="move";
+    b.innerText=mv.name;
+    b.onclick=()=>attack(mv);
+    m.appendChild(b);
+  });
 }
 
-function initMap(){
+function attack(mv){
+  wild.hp-=mv.p;
+  if(wild.hp<=0){
+    drop();
+    closeBattle();
+  }
+  document.getElementById("log").innerText="Hit!";
+}
 
-  if(map) return;
+function closeBattle(){
+  inBattle=false;
+  document.getElementById("battle").classList.remove("active");
+}
 
-  map=L.map('map',{
-    zoomControl:true
-  }).setView([47.6205,-122.3493],13);
-
-  L.tileLayer(
-    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    {
-      maxZoom:19
+/* ---------------- DROPS ---------------- */
+function drop(){
+  let list=[];
+  for(let i=0;i<2;i++){
+    let r=Math.random()*100,c=0;
+    for(let k in BALLS){
+      c+=BALLS[k].w;
+      if(r<c){balls[k]=(balls[k]||0)+1;list.push(k);break;}
     }
-  ).addTo(map);
-
-  L.marker([47.6205,-122.3493])
-    .addTo(map)
-    .bindPopup("Space Needle");
-
-  setTimeout(()=>{
-    map.invalidateSize();
-  },200);
+  }
+  render();
 }
 
-function showView(view){
-
-  document.querySelectorAll('.nav-btn')
-    .forEach(btn=>btn.classList.remove('active'));
-
-  document.getElementById('storage-modal')
-    .classList.add('hidden');
-
-  document.getElementById('dex-modal')
-    .classList.add('hidden');
-
-  if(view==='field'){
-
-    document.getElementById('nav-field')
-      .classList.add('active');
-  }
-
-  if(view==='map'){
-
-    document.getElementById('nav-map')
-      .classList.add('active');
-
-    setTimeout(()=>{
-      if(map){
-        map.invalidateSize();
-      }
-    },200);
-  }
-
-  if(view==='storage'){
-
-    document.getElementById('nav-storage')
-      .classList.add('active');
-
-    document.getElementById('storage-modal')
-      .classList.remove('hidden');
-  }
-
-  if(view==='dex'){
-
-    document.getElementById('nav-dex')
-      .classList.add('active');
-
-    document.getElementById('dex-modal')
-      .classList.remove('hidden');
-  }
+/* ---------------- BLE (stub) ---------------- */
+function connectBLE(){
+  let id=Math.floor(Math.random()*9999);
+  nodes[id]=true;
+  render();
+  if(Math.random()<0.5)battle();
 }
 
-window.addEventListener('load',()=>{
+/* AUTO LOOP DEMO */
+setInterval(()=>{
+  if(Math.random()<0.3){
+    let id=Math.floor(Math.random()*9999);
+    nodes[id]=true;
+    render();
+  }
+},5000);
 
-  buildStarterGrid();
-
-  document.getElementById('nav-field')
-    .addEventListener('click',()=>showView('field'));
-
-  document.getElementById('nav-map')
-    .addEventListener('click',()=>showView('map'));
-
-  document.getElementById('nav-storage')
-    .addEventListener('click',()=>showView('storage'));
-
-  document.getElementById('nav-dex')
-    .addEventListener('click',()=>showView('dex'));
-
-  document.getElementById('close-storage')
-    .addEventListener('click',()=>showView('field'));
-
-  document.getElementById('close-dex')
-    .addEventListener('click',()=>showView('field'));
-
-  showToast("Game loaded!");
-});
 </script>
 
 </body>
