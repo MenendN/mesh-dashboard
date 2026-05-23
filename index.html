@@ -1,297 +1,1060 @@
+
+raw
+Index · HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PokéMesh Scanner</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1117; color: #f0f0f0; padding: 20px; max-width: 480px; margin: 0 auto; }
-    h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
-    .subtitle { font-size: 13px; color: #888; margin-bottom: 20px; }
-    .status-row { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; font-size: 13px; color: #888; }
-    .dot { width: 10px; height: 10px; border-radius: 50%; background: #e24b4a; flex-shrink: 0; }
-    .dot.green { background: #1D9E75; }
-    .dot.amber { background: #EF9F27; }
-    .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 24px; }
-    button { padding: 10px 8px; border-radius: 10px; border: none; background: #1D9E75; color: white; font-size: 13px; font-weight: 500; cursor: pointer; }
-    button:disabled { background: #2a2d3a; color: #555; cursor: default; }
-    button:active:not(:disabled) { transform: scale(0.97); }
-    #connect-btn { grid-column: span 2; font-size: 15px; padding: 12px; }
-    #drain-btn { background: #1a3a8f; }
-    #dump-btn  { background: #5a2d8f; }
-    #clear-btn { background: #444; }
-    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-    .section-title { font-size: 15px; font-weight: 500; }
-    .count { font-size: 13px; color: #888; }
-    .node-card { background: #1a1d27; border: 1px solid #2a2d3a; border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 14px; margin-bottom: 10px; animation: slideIn 0.3s ease; }
-    @keyframes slideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
-    .checkmark { width: 36px; height: 36px; border-radius: 50%; background: #0F6E56; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 18px; }
-    .node-name { font-size: 15px; font-weight: 500; }
-    .node-meta { font-size: 12px; color: #888; margin-top: 3px; }
-    .empty { text-align: center; padding: 40px 20px; color: #555; font-size: 14px; }
-    .empty-icon { font-size: 40px; margin-bottom: 10px; }
-    .log { margin-top: 24px; background: #1a1d27; border-radius: 10px; padding: 12px; font-family: monospace; font-size: 12px; color: #666; min-height: 80px; max-height: 200px; overflow-y: auto; border: 1px solid #2a2d3a; }
-    .log div { margin-bottom: 2px; }
-    .log div.hi { color: #1D9E75; }
-    .log div.er { color: #e24b4a; }
-    .log div.am { color: #EF9F27; }
-    .log div.pu { color: #a78bfa; }
-    .raw-hex { font-size: 10px; color: #444; word-break: break-all; }
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PokéMesh</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:monospace;background:#0a0a0a;color:#e0e0e0;max-width:480px;margin:0 auto;padding:12px;min-height:100vh}
+h1{font-size:20px;letter-spacing:2px;color:#f8d030;text-align:center;margin-bottom:4px}
+.sub{text-align:center;font-size:11px;color:#666;margin-bottom:12px}
+ 
+/* status */
+.status-row{display:flex;align-items:center;gap:8px;font-size:12px;color:#888;margin-bottom:10px}
+.dot{width:9px;height:9px;border-radius:50%;background:#e24b4a;flex-shrink:0}
+.dot.green{background:#48d058}.dot.amber{background:#f0a030}
+ 
+/* buttons */
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:14px}
+.btn-wide{grid-column:span 2}
+button{padding:8px 6px;border-radius:6px;border:1px solid #333;background:#1a1a1a;color:#ccc;font-size:12px;font-family:monospace;cursor:pointer}
+button:disabled{color:#444;border-color:#222;cursor:default}
+button.primary{background:#1a3a1a;color:#48d058;border-color:#2a5a2a}
+button:active:not(:disabled){transform:scale(0.97)}
+ 
+/* tabs */
+.tabs{display:flex;gap:4px;margin-bottom:10px}
+.tab{flex:1;padding:7px;border-radius:6px;border:1px solid #333;background:#111;color:#888;font-size:12px;font-family:monospace;cursor:pointer;text-align:center}
+.tab.active{background:#1a1a2a;color:#a0a0ff;border-color:#404080}
+ 
+/* views */
+.view{display:none}.view.active{display:block}
+ 
+/* node/encounter list */
+.card{background:#111;border:1px solid #222;border-radius:8px;padding:10px 12px;margin-bottom:8px;cursor:pointer}
+.card:hover{border-color:#444}
+.card-title{font-size:14px;font-weight:bold;color:#f0f0f0;margin-bottom:2px}
+.card-meta{font-size:11px;color:#666}
+.badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;margin-left:6px}
+.badge.fire{background:#3a1a0a;color:#f07030}
+.badge.water{background:#0a1a3a;color:#3090f0}
+.badge.grass{background:#0a2a0a;color:#48b030}
+.badge.electric{background:#2a2a00;color:#f8d030}
+.badge.psychic{background:#2a0a2a;color:#e050e0}
+.badge.normal{background:#222;color:#aaa}
+.badge.poison{background:#1a0a2a;color:#a050d0}
+.badge.fighting{background:#2a1000;color:#d05020}
+.badge.rock{background:#1a1800;color:#a09040}
+.badge.ghost{background:#0a0a1a;color:#7060b0}
+ 
+/* battle screen */
+#battle-screen{display:none;position:fixed;inset:0;background:#0a0a0a;z-index:100;max-width:480px;margin:0 auto;padding:12px;overflow-y:auto}
+.battle-field{background:#111;border:1px solid #333;border-radius:8px;padding:12px;margin-bottom:10px}
+.fighter-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.fighter{flex:1}
+.fighter.enemy{text-align:right}
+.fighter-name{font-size:13px;font-weight:bold;color:#f0f0f0}
+.fighter-level{font-size:11px;color:#666;margin-bottom:4px}
+.hp-bar-bg{height:8px;background:#222;border-radius:4px;overflow:hidden;margin-bottom:2px}
+.hp-bar{height:100%;background:#48d058;border-radius:4px;transition:width 0.4s}
+.hp-bar.yellow{background:#f8d030}.hp-bar.red{background:#e24b4a}
+.hp-text{font-size:10px;color:#666}
+.status-badge{display:inline-block;padding:1px 5px;border-radius:3px;font-size:10px;margin-top:2px}
+.status-badge.burn{background:#3a1000;color:#f07030}
+.status-badge.poison{background:#1a0030;color:#a050d0}
+.status-badge.faint{background:#1a0000;color:#e24b4a}
+ 
+/* sprite area */
+.sprite-area{text-align:center;padding:10px 0;font-size:60px;min-height:90px;display:flex;align-items:center;justify-content:center;gap:40px}
+.sprite-enemy{font-size:64px;display:inline-block}
+.sprite-player{font-size:52px;display:inline-block;transform:scaleX(-1)}
+ 
+/* battle log */
+.battle-log{background:#0a0a0a;border:1px solid #222;border-radius:6px;padding:8px;font-size:11px;color:#aaa;min-height:50px;max-height:80px;overflow-y:auto;margin-bottom:10px}
+.battle-log div{margin-bottom:2px}
+.battle-log .hi{color:#48d058}.battle-log .em{color:#f8d030}.battle-log .er{color:#e24b4a}
+ 
+/* move buttons */
+.moves-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.move-btn{padding:9px 6px;border-radius:6px;border:1px solid #333;background:#111;color:#ccc;font-size:11px;font-family:monospace;cursor:pointer;text-align:left}
+.move-btn:hover:not(:disabled){border-color:#555}
+.move-btn .pp{font-size:9px;color:#666;display:block}
+.move-btn:disabled{color:#333;border-color:#1a1a1a}
+.battle-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+ 
+/* catch animation */
+#catch-screen{display:none;position:fixed;inset:0;background:#0a0a0a;z-index:200;max-width:480px;margin:0 auto;padding:20px;flex-direction:column;align-items:center;justify-content:center}
+#catch-screen.active{display:flex}
+.catch-title{font-size:16px;color:#f8d030;text-align:center;margin-bottom:20px;letter-spacing:1px}
+.slot-machine{display:flex;gap:12px;justify-content:center;margin-bottom:20px}
+.slot{width:72px;height:72px;border:2px solid #333;border-radius:8px;background:#111;display:flex;align-items:center;justify-content:center;font-size:36px;transition:all 0.15s}
+.slot.spinning{border-color:#555}
+.slot.result-mon{border-color:#f8d030}
+.slot.result-ball{border-color:#48d058;font-size:28px}
+.catch-msg{font-size:13px;color:#aaa;text-align:center;min-height:30px}
+.catch-final{font-size:48px;text-align:center;margin:10px 0}
+ 
+/* team view */
+.team-slot{background:#111;border:1px solid #222;border-radius:8px;padding:10px;display:flex;align-items:center;gap:10px;margin-bottom:7px;cursor:pointer}
+.team-slot:hover{border-color:#444}
+.team-slot.active-slot{border-color:#f8d030}
+.team-slot.fainted{opacity:0.4}
+.slot-sprite{font-size:32px;min-width:40px;text-align:center}
+.slot-info{flex:1}
+.slot-name{font-size:13px;font-weight:bold}
+.slot-stats{font-size:10px;color:#666;margin-top:2px}
+.slot-hp-bg{height:5px;background:#222;border-radius:3px;margin-top:4px}
+.slot-hp-bar{height:100%;border-radius:3px;background:#48d058;transition:width 0.3s}
+ 
+/* dex view */
+.dex-card{background:#111;border:1px solid #222;border-radius:8px;padding:10px 12px;margin-bottom:7px;display:flex;align-items:center;gap:10px}
+.dex-sprite{font-size:30px;min-width:38px;text-align:center}
+.dex-info{flex:1}
+.dex-name{font-size:13px;font-weight:bold}
+.dex-meta{font-size:10px;color:#666;margin-top:2px}
+.dex-moves{font-size:10px;color:#8080c0;margin-top:2px}
+.empty{text-align:center;padding:30px;color:#444;font-size:13px}
+ 
+/* log */
+.log{background:#0a0a0a;border:1px solid #1a1a1a;border-radius:6px;padding:8px;font-size:11px;color:#555;min-height:60px;max-height:150px;overflow-y:auto;margin-top:10px}
+.log div{margin-bottom:1px}
+.log .hi{color:#48d058}.log .er{color:#e24b4a}.log .am{color:#f0a030}
+ 
+/* heal timer */
+.heal-timer{font-size:10px;color:#e24b4a;margin-top:2px}
+ 
+/* active pokemon indicator */
+.active-label{font-size:9px;color:#f8d030;letter-spacing:1px;text-transform:uppercase}
+</style>
 </head>
 <body>
  
-  <h1>PokéMesh Scanner</h1>
-  <p class="subtitle">Discovers nearby Meshtastic nodes via Bluetooth</p>
+<h1>⚡ POKÉMESH</h1>
+<p class="sub">Walk the mesh. Catch 'em all.</p>
  
-  <div class="status-row">
-    <div class="dot" id="dot"></div>
-    <span id="status-text">Disconnected</span>
-  </div>
+<div class="status-row">
+  <div class="dot" id="dot"></div>
+  <span id="status-text">Disconnected</span>
+</div>
  
-  <div class="btn-grid">
-    <button id="connect-btn">&#x1F4F6; Connect to Meshtastic</button>
-    <button id="scan-btn"  disabled>&#x1F4E1; Request Nodes</button>
-    <button id="drain-btn" disabled>&#x23EC; Drain Buffer</button>
-    <button id="dump-btn"  disabled>&#x1F4CB; Dump Raw Packets</button>
-    <button id="clear-btn" disabled>&#x1F5D1; Clear List</button>
-  </div>
+<div class="btn-row">
+  <button id="connect-btn" class="btn-wide primary">📶 Connect to Meshtastic</button>
+  <button id="drain-btn" disabled>⬇ Scan Nodes</button>
+  <button id="clear-btn" disabled>🗑 Clear Nodes</button>
+</div>
  
-  <div class="section-header">
-    <span class="section-title">Discovered Nodes</span>
-    <span class="count" id="count">0 found</span>
-  </div>
+<div class="tabs">
+  <div class="tab active" data-tab="world">🌿 World</div>
+  <div class="tab" data-tab="team">🎒 Team</div>
+  <div class="tab" data-tab="dex">📖 Caught</div>
+</div>
  
-  <div id="node-list">
-    <div class="empty" id="empty-state">
-      <div class="empty-icon">&#x1F4E1;</div>
-      Connect then tap buttons to discover nodes
+<!-- WORLD VIEW -->
+<div class="view active" id="view-world">
+  <div id="node-list"><div class="empty">Connect and scan to find nodes</div></div>
+</div>
+ 
+<!-- TEAM VIEW -->
+<div class="view" id="view-team">
+  <div id="team-list"><div class="empty">No Pokémon yet</div></div>
+</div>
+ 
+<!-- DEX VIEW -->
+<div class="view" id="view-dex">
+  <div id="dex-list"><div class="empty">No Pokémon caught yet</div></div>
+</div>
+ 
+<div class="log" id="log"></div>
+ 
+<!-- BATTLE SCREEN -->
+<div id="battle-screen">
+  <h1 style="margin-bottom:8px">⚔ BATTLE</h1>
+ 
+  <div class="battle-field">
+    <div class="fighter-row">
+      <div class="fighter">
+        <div class="fighter-name" id="b-pname">—</div>
+        <div class="fighter-level" id="b-plevel">Lv.1</div>
+        <div class="hp-bar-bg"><div class="hp-bar" id="b-php" style="width:100%"></div></div>
+        <div class="hp-text" id="b-php-text">HP: —</div>
+        <div id="b-pstatus"></div>
+        <div class="active-label" id="b-active-label">▲ ACTIVE</div>
+      </div>
+      <div class="fighter enemy">
+        <div class="fighter-name" id="b-ename">—</div>
+        <div class="fighter-level" id="b-elevel">Lv.1</div>
+        <div class="hp-bar-bg"><div class="hp-bar" id="b-ehp" style="width:100%"></div></div>
+        <div class="hp-text" id="b-ehp-text">HP: —</div>
+        <div id="b-estatus"></div>
+      </div>
+    </div>
+    <div class="sprite-area">
+      <span class="sprite-enemy" id="b-esprite">?</span>
+      <span class="sprite-player" id="b-psprite">?</span>
     </div>
   </div>
  
-  <div class="log" id="log"></div>
+  <div class="battle-log" id="battle-log"></div>
+ 
+  <div id="battle-ui">
+    <div class="moves-grid" id="moves-grid"></div>
+    <div class="battle-actions">
+      <button id="btn-catch">🔴 Throw Ball</button>
+      <button id="btn-run">🏃 Run Away</button>
+      <button id="btn-switch">🔄 Switch</button>
+      <button id="btn-next-turn" style="display:none">▶ Continue</button>
+    </div>
+  </div>
+ 
+  <!-- switch panel -->
+  <div id="switch-panel" style="display:none;margin-top:10px">
+    <div style="font-size:12px;color:#aaa;margin-bottom:6px">Choose a Pokémon:</div>
+    <div id="switch-list"></div>
+    <button id="btn-cancel-switch" style="width:100%;margin-top:6px">Cancel</button>
+  </div>
+</div>
+ 
+<!-- CATCH SCREEN -->
+<div id="catch-screen">
+  <div class="catch-title" id="catch-title">Throwing Poké Balls!</div>
+  <div class="slot-machine" id="slot-machine">
+    <div class="slot" id="slot0">?</div>
+    <div class="slot" id="slot1">?</div>
+    <div class="slot" id="slot2">?</div>
+  </div>
+  <div class="catch-final" id="catch-final"></div>
+  <div class="catch-msg" id="catch-msg"></div>
+  <button id="catch-close-btn" style="display:none;margin-top:16px;width:100%">Continue</button>
+</div>
  
 <script>
-  const MESHTASTIC_SERVICE = '6ba1b218-15a8-461f-9fa8-5dcae273eafd';
-  const FROMRADIO_CHAR     = '2c55e69e-4993-11ed-b878-0242ac120002';
-  const FROMNUM_CHAR       = 'ed9da18c-a800-4f66-a670-aa7547e34453';
-  const TORADIO_CHAR       = 'f75c76d2-129e-4dad-a1dd-7866124401e7';
+// ==================== DATA ====================
+const POKEMON_DATA = [
+  {id:1,  name:"Bulbasaur",  type:"grass",    sprite:"🌱", hp:45, atk:49, def:49, spd:45, moves:["Tackle","Vine Whip","Leech Seed","Growl"]},
+  {id:4,  name:"Charmander", type:"fire",     sprite:"🦎", hp:39, atk:52, def:43, spd:65, moves:["Scratch","Ember","Growl","Rage"]},
+  {id:7,  name:"Squirtle",   type:"water",    sprite:"🐢", hp:44, atk:48, def:65, spd:43, moves:["Tackle","Water Gun","Tail Whip","Bubble"]},
+  {id:25, name:"Pikachu",    type:"electric", sprite:"⚡", hp:35, atk:55, def:30, spd:90, moves:["Thunder Shock","Quick Attack","Growl","Tail Whip"]},
+  {id:39, name:"Jigglypuff", type:"normal",   sprite:"🎵", hp:115,atk:45, def:20, spd:20, moves:["Pound","Sing","Disable","Defense Curl"]},
+  {id:52, name:"Meowth",     type:"normal",   sprite:"🐱", hp:40, atk:45, def:35, spd:90, moves:["Scratch","Bite","Growl","Pay Day"]},
+  {id:54, name:"Psyduck",    type:"water",    sprite:"🦆", hp:50, atk:52, def:48, spd:55, moves:["Scratch","Water Sport","Tail Whip","Disable"]},
+  {id:58, name:"Growlithe",  type:"fire",     sprite:"🐕", hp:55, atk:70, def:45, spd:60, moves:["Bite","Ember","Roar","Odor Sleuth"]},
+  {id:63, name:"Abra",       type:"psychic",  sprite:"🔮", hp:25, atk:20, def:15, spd:90, moves:["Teleport","Confusion","Encore","Psybeam"]},
+  {id:66, name:"Machop",     type:"fighting", sprite:"💪", hp:70, atk:80, def:50, spd:35, moves:["Low Kick","Leer","Focus Energy","Karate Chop"]},
+  {id:74, name:"Geodude",    type:"rock",     sprite:"🪨", hp:40, atk:80, def:100,spd:20, moves:["Tackle","Defense Curl","Mud Sport","Rock Throw"]},
+  {id:92, name:"Gastly",     type:"ghost",    sprite:"👻", hp:30, atk:35, def:30, spd:80, moves:["Lick","Spite","Mean Look","Curse"]},
+  {id:94, name:"Gengar",     type:"ghost",    sprite:"😈", hp:60, atk:65, def:60, spd:110,moves:["Shadow Ball","Hypnosis","Night Shade","Curse"]},
+  {id:113,name:"Chansey",    type:"normal",   sprite:"🥚", hp:250,atk:5,  def:5,  spd:50, moves:["Pound","Egg Bomb","Growl","Defense Curl"]},
+  {id:129,name:"Magikarp",   type:"water",    sprite:"🐟", hp:20, atk:10, def:55, spd:80, moves:["Splash","Tackle","Flail","Bounce"]},
+  {id:143,name:"Snorlax",    type:"normal",   sprite:"😴", hp:160,atk:110,def:65, spd:30, moves:["Tackle","Body Slam","Rest","Snore"]},
+  {id:147,name:"Dratini",    type:"normal",   sprite:"🐉", hp:41, atk:64, def:45, spd:50, moves:["Wrap","Leer","Thunder Wave","Dragon Rage"]},
+  {id:152,name:"Chikorita",  type:"grass",    sprite:"🍃", hp:45, atk:49, def:65, spd:45, moves:["Tackle","Razor Leaf","Growl","Poison Powder"]},
+  {id:155,name:"Cyndaquil",  type:"fire",     sprite:"🔥", hp:39, atk:52, def:43, spd:65, moves:["Tackle","Ember","Growl","Quick Attack"]},
+  {id:158,name:"Totodile",   type:"water",    sprite:"🐊", hp:50, atk:65, def:64, spd:43, moves:["Scratch","Water Gun","Leer","Rage"]},
+  {id:172,name:"Pichu",      type:"electric", sprite:"🐭", hp:20, atk:40, def:15, spd:60, moves:["Thunder Shock","Charm","Tail Whip","Sweet Kiss"]},
+  {id:175,name:"Togepi",     type:"normal",   sprite:"🥚", hp:35, atk:20, def:65, spd:20, moves:["Charm","Metronome","Sweet Kiss","Growl"]},
+  {id:196,name:"Espeon",     type:"psychic",  sprite:"🌸", hp:65, atk:65, def:60, spd:110,moves:["Quick Attack","Psybeam","Confusion","Future Sight"]},
+  {id:197,name:"Umbreon",    type:"normal",   sprite:"🌑", hp:95, atk:65, def:110,spd:65, moves:["Tackle","Pursuit","Bite","Confuse Ray"]},
+];
  
-  let nodes = {};
-  let connected = false;
-  let device, server, fromRadioChar, fromNumChar, toRadioChar;
+const MOVE_DATA = {
+  "Tackle":       {power:40, type:"normal",   pp:35, maxPP:35},
+  "Scratch":      {power:40, type:"normal",   pp:35, maxPP:35},
+  "Pound":        {power:40, type:"normal",   pp:35, maxPP:35},
+  "Low Kick":     {power:50, type:"fighting", pp:20, maxPP:20},
+  "Vine Whip":    {power:45, type:"grass",    pp:25, maxPP:25},
+  "Razor Leaf":   {power:55, type:"grass",    pp:25, maxPP:25},
+  "Ember":        {power:40, type:"fire",     pp:25, maxPP:25},
+  "Water Gun":    {power:40, type:"water",    pp:25, maxPP:25},
+  "Bubble":       {power:40, type:"water",    pp:30, maxPP:30},
+  "Thunder Shock":{power:40, type:"electric", pp:30, maxPP:30},
+  "Quick Attack": {power:40, type:"normal",   pp:30, maxPP:30},
+  "Bite":         {power:60, type:"normal",   pp:25, maxPP:25},
+  "Shadow Ball":  {power:80, type:"ghost",    pp:15, maxPP:15},
+  "Confusion":    {power:50, type:"psychic",  pp:25, maxPP:25},
+  "Psybeam":      {power:65, type:"psychic",  pp:20, maxPP:20},
+  "Body Slam":    {power:85, type:"normal",   pp:15, maxPP:15},
+  "Rock Throw":   {power:50, type:"rock",     pp:15, maxPP:15},
+  "Karate Chop":  {power:50, type:"fighting", pp:25, maxPP:25},
+  "Night Shade":  {power:50, type:"ghost",    pp:15, maxPP:15},
+  "Egg Bomb":     {power:100,type:"normal",   pp:10, maxPP:10},
+  "Flail":        {power:20, type:"normal",   pp:15, maxPP:15},
+  "Dragon Rage":  {power:50, type:"normal",   pp:10, maxPP:10},
+  "Wrap":         {power:15, type:"normal",   pp:20, maxPP:20},
+  "Future Sight": {power:120,type:"psychic",  pp:10, maxPP:10},
+  "Pursuit":      {power:40, type:"normal",   pp:20, maxPP:20},
+  "Confuse Ray":  {power:0,  type:"ghost",    pp:10, maxPP:10},
+  "Hypnosis":     {power:0,  type:"psychic",  pp:20, maxPP:20},
+  "Sing":         {power:0,  type:"normal",   pp:15, maxPP:15},
+  "Growl":        {power:0,  type:"normal",   pp:40, maxPP:40},
+  "Leer":         {power:0,  type:"normal",   pp:30, maxPP:30},
+  "Tail Whip":    {power:0,  type:"normal",   pp:30, maxPP:30},
+  "Defense Curl": {power:0,  type:"normal",   pp:40, maxPP:40},
+  "Roar":         {power:0,  type:"normal",   pp:20, maxPP:20},
+  "Teleport":     {power:0,  type:"psychic",  pp:20, maxPP:20},
+  "Splash":       {power:0,  type:"normal",   pp:40, maxPP:40},
+  "Rest":         {power:0,  type:"normal",   pp:10, maxPP:10},
+  "Snore":        {power:40, type:"normal",   pp:15, maxPP:15},
+  "Charm":        {power:0,  type:"normal",   pp:20, maxPP:20},
+  "Sweet Kiss":   {power:0,  type:"normal",   pp:10, maxPP:10},
+  "Metronome":    {power:0,  type:"normal",   pp:10, maxPP:10},
+  "Leech Seed":   {power:0,  type:"grass",    pp:10, maxPP:10},
+  "Pay Day":      {power:40, type:"normal",   pp:20, maxPP:20},
+  "Water Sport":  {power:0,  type:"water",    pp:15, maxPP:15},
+  "Disable":      {power:0,  type:"normal",   pp:20, maxPP:20},
+  "Focus Energy": {power:0,  type:"normal",   pp:30, maxPP:30},
+  "Mud Sport":    {power:0,  type:"normal",   pp:15, maxPP:15},
+  "Spite":        {power:0,  type:"ghost",    pp:10, maxPP:10},
+  "Mean Look":    {power:0,  type:"normal",   pp:5,  maxPP:5 },
+  "Curse":        {power:0,  type:"ghost",    pp:10, maxPP:10},
+  "Odor Sleuth":  {power:0,  type:"normal",   pp:40, maxPP:40},
+  "Thunder Wave": {power:0,  type:"electric", pp:20, maxPP:20},
+  "Encore":       {power:0,  type:"normal",   pp:5,  maxPP:5 },
+  "Poison Powder":{power:0,  type:"grass",    pp:35, maxPP:35},
+  "Rage":         {power:20, type:"normal",   pp:20, maxPP:20},
+};
  
-  const sleep = ms => new Promise(r => setTimeout(r, ms));
+// ==================== STATE ====================
+let nodes = {};
+let nodeCooldowns = {};
+let playerTeam = []; // max 6 pokemon objects
+let caughtBox = [];
+let activeSlot = 0;
  
-  const log = (msg, cls) => {
-    const el = document.getElementById('log');
-    const line = document.createElement('div');
-    if (cls) line.className = cls;
-    line.textContent = '> ' + msg;
-    el.appendChild(line);
-    el.scrollTop = el.scrollHeight;
-  };
+let blState = {connected:false, device:null, server:null, fromRadio:null, fromNum:null, toRadio:null};
+let battleState = null;
+let catchState = null;
  
-  const logRaw = (bytes) => {
-    const el = document.getElementById('log');
-    const line = document.createElement('div');
-    line.className = 'raw-hex';
-    line.textContent = '  HEX: ' + Array.from(bytes).map(b => b.toString(16).padStart(2,'0')).join(' ');
-    el.appendChild(line);
-    el.scrollTop = el.scrollHeight;
-  };
+// ==================== BLE ====================
+const SERVICE_UUID    = '6ba1b218-15a8-461f-9fa8-5dcae273eafd';
+const FROMRADIO_UUID  = '2c55e69e-4993-11ed-b878-0242ac120002';
+const FROMNUM_UUID    = 'ed9da18c-a800-4f66-a670-aa7547e34453';
+const TORADIO_UUID    = 'f75c76d2-129e-4dad-a1dd-7866124401e7';
  
-  const setStatus = (text, state) => {
-    document.getElementById('status-text').textContent = text;
-    const dot = document.getElementById('dot');
-    dot.className = 'dot' + (state ? ' ' + state : '');
-  };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
  
-  const setButtons = (on) => {
-    ['scan-btn','drain-btn','dump-btn','clear-btn'].forEach(id => {
-      document.getElementById(id).disabled = !on;
+const log = (msg, cls) => {
+  const el = document.getElementById('log');
+  const d = document.createElement('div');
+  if (cls) d.className = cls;
+  d.textContent = '> ' + msg;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+};
+ 
+const setStatus = (txt, state) => {
+  document.getElementById('status-text').textContent = txt;
+  const dot = document.getElementById('dot');
+  dot.className = 'dot' + (state ? ' '+state : '');
+};
+ 
+const setButtons = on => {
+  document.getElementById('drain-btn').disabled = !on;
+  document.getElementById('clear-btn').disabled = !on;
+  document.getElementById('connect-btn').disabled = on;
+  document.getElementById('connect-btn').textContent = on ? '✓ Connected' : '📶 Connect to Meshtastic';
+};
+ 
+const parsePacket = buf => {
+  try {
+    const bytes = new Uint8Array(buf);
+    if (bytes.length < 2) return;
+    const view = new DataView(buf);
+    let nodeId = null, name = null, snr = undefined;
+ 
+    for (let offset of [4,0,8,12]) {
+      if (bytes.length >= offset+4) {
+        const c = view.getUint32(offset, false);
+        if (c > 0x10000 && c !== 0xFFFFFFFF) { nodeId = c; break; }
+      }
+    }
+ 
+    let i = 0;
+    while (i < bytes.length) {
+      if (bytes[i] >= 32 && bytes[i] < 127) {
+        let str = '', j = i;
+        while (j < bytes.length && bytes[j] >= 32 && bytes[j] < 127) { str += String.fromCharCode(bytes[j]); j++; }
+        if (str.length >= 2 && str.length <= 32 && !/^[0-9]+$/.test(str)) { name = str; break; }
+        i = j;
+      } else i++;
+    }
+ 
+    if (!nodeId && name) nodeId = Math.abs(name.split('').reduce((h,c) => Math.imul(31,h)+c.charCodeAt(0)|0, 0));
+    if (nodeId) onNodeDetected(nodeId, name, snr);
+  } catch(e) { log('Parse error: '+e.message,'er'); }
+};
+ 
+const readFromRadio = async () => {
+  try {
+    if (!blState.server.connected) return 0;
+    const v = await blState.fromRadio.readValue();
+    if (v && v.byteLength > 0) parsePacket(v.buffer);
+    return v ? v.byteLength : 0;
+  } catch(e) { return 0; }
+};
+ 
+const drainBuffer = async () => {
+  log('Scanning...','am');
+  try {
+    await blState.toRadio.writeValue(new Uint8Array([0x18, 0x01]));
+  } catch(e) {}
+  let empty=0, count=0;
+  while (empty<3 && count<50) {
+    const len = await readFromRadio();
+    if (len===0) empty++; else { empty=0; count++; }
+    await sleep(120);
+  }
+  log('Scan done. '+count+' packets.','hi');
+};
+ 
+const connectBLE = async () => {
+  log('Requesting Bluetooth device...');
+  setStatus('Connecting...','amber');
+  try {
+    blState.device = await navigator.bluetooth.requestDevice({
+      filters:[{services:[SERVICE_UUID]}],
+      optionalServices:[SERVICE_UUID]
     });
-    document.getElementById('connect-btn').disabled = on;
-    document.getElementById('connect-btn').textContent = on ? '✓ Connected' : '📶 Connect to Meshtastic';
-  };
- 
-  const addNode = (id, name, snr) => {
-    if (nodes[id]) return;
-    nodes[id] = true;
-    document.getElementById('empty-state')?.remove();
-    document.getElementById('count').textContent = Object.keys(nodes).length + ' found';
-    const shortId = Number(id).toString(16).toUpperCase().padStart(8,'0').slice(-4);
-    const card = document.createElement('div');
-    card.className = 'node-card';
-    card.innerHTML =
-      '<div class="checkmark">&#x2713;</div>' +
-      '<div style="flex:1">' +
-        '<div class="node-name">' + (name || 'Unknown Node') + '</div>' +
-        '<div class="node-meta">ID: !' + shortId + (snr !== undefined ? ' &nbsp;·&nbsp; SNR: ' + snr + ' dB' : '') + '</div>' +
-      '</div>';
-    document.getElementById('node-list').appendChild(card);
-    log('Node discovered: ' + (name || '!' + shortId), 'hi');
-  };
- 
-  const parsePacket = (buffer, showRaw) => {
+  } catch(e) {
     try {
-      const bytes = new Uint8Array(buffer);
-      if (bytes.length < 2) { log('Empty packet'); return; }
-      log('Packet ' + bytes.length + ' bytes', 'am');
-      if (showRaw) logRaw(bytes);
- 
-      const view = new DataView(buffer);
-      let nodeId = null, name = null;
- 
-      for (let offset of [4, 0, 8, 12]) {
-        if (bytes.length >= offset + 4) {
-          const candidate = view.getUint32(offset, false);
-          if (candidate > 0x10000 && candidate !== 0xFFFFFFFF) { nodeId = candidate; break; }
-        }
-      }
- 
-      let i = 0;
-      while (i < bytes.length) {
-        if (bytes[i] >= 32 && bytes[i] < 127) {
-          let str = '', j = i;
-          while (j < bytes.length && bytes[j] >= 32 && bytes[j] < 127) { str += String.fromCharCode(bytes[j]); j++; }
-          if (str.length >= 2 && str.length <= 32 && !/^[0-9]+$/.test(str)) { name = str; break; }
-          i = j;
-        } else { i++; }
-      }
- 
-      if (name) log('  Name found: ' + name, 'pu');
-      if (nodeId) log('  ID found: ' + nodeId.toString(16), 'pu');
- 
-      if (!nodeId && name) nodeId = Math.abs(name.split('').reduce((h,c) => Math.imul(31,h)+c.charCodeAt(0)|0, 0));
-      if (nodeId || name) addNode(nodeId, name, undefined);
-      else log('  No node data in this packet');
-    } catch(e) { log('Parse error: ' + e.message, 'er'); }
-  };
- 
-  const readFromRadio = async (showRaw) => {
-    try {
-      if (!server.connected) return;
-      const val = await fromRadioChar.readValue();
-      if (val && val.byteLength > 0) parsePacket(val.buffer, showRaw);
-      return val ? val.byteLength : 0;
-    } catch(e) { log('Read error: ' + e.message, 'er'); return 0; }
-  };
- 
-  // Drain: keep reading fromRadio until empty
-  const drainBuffer = async () => {
-    log('Draining buffer...', 'am');
-    let count = 0, empty = 0;
-    while (empty < 3 && count < 30) {
-      const len = await readFromRadio(false);
-      if (len === 0) empty++;
-      else { empty = 0; count++; }
-      await sleep(100);
-    }
-    log('Drain complete. ' + count + ' packets read.', 'hi');
-  };
- 
-  // Dump: send want_config then drain showing raw hex
-  const dumpPackets = async () => {
-    log('Sending want_config request...', 'am');
-    try {
-      await toRadioChar.writeValue(new Uint8Array([0x18, 0x01]));
-      log('Request sent, reading responses...', 'hi');
-      await sleep(500);
-      let count = 0, empty = 0;
-      while (empty < 3 && count < 50) {
-        const len = await readFromRadio(true);
-        if (len === 0) empty++;
-        else { empty = 0; count++; }
-        await sleep(150);
-      }
-      log('Dump complete. ' + count + ' packets.', 'hi');
-    } catch(e) { log('Dump error: ' + e.message, 'er'); }
-  };
- 
-  const requestNodes = async () => {
-    log('Requesting node info...', 'am');
-    try {
-      await toRadioChar.writeValue(new Uint8Array([0x18, 0x01]));
-      log('Request sent!', 'hi');
-    } catch(e) { log('Error: ' + e.message, 'er'); }
-  };
- 
-  const setupService = async () => {
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        if (!server.connected) { server = await device.gatt.connect(); await sleep(500); }
-        const service = await server.getPrimaryService(MESHTASTIC_SERVICE);
-        log('Service found!', 'hi');
-        fromRadioChar = await service.getCharacteristic(FROMRADIO_CHAR);
-        fromNumChar   = await service.getCharacteristic(FROMNUM_CHAR);
-        toRadioChar   = await service.getCharacteristic(TORADIO_CHAR);
-        await fromNumChar.startNotifications();
-        fromNumChar.addEventListener('characteristicvaluechanged', () => readFromRadio(false));
-        connected = true;
-        setStatus('Connected: ' + (device.name || 'device'), 'green');
-        setButtons(true);
-        const empty = document.getElementById('empty-state');
-        if (empty) empty.innerHTML = '<div class="empty-icon">&#x1F4E1;</div>Scanning... tap buttons to force discovery';
-        log('Connected! Tap "Drain Buffer" or "Dump Raw Packets" to find nodes.', 'hi');
-        return true;
-      } catch(e) {
-        log('Attempt ' + attempt + ' failed: ' + e.message, 'er');
-        if (attempt < 3) { await sleep(1000); }
-      }
-    }
-    setStatus('Failed', '');
-    document.getElementById('connect-btn').disabled = false;
-    document.getElementById('connect-btn').textContent = '📶 Try Again';
-    return false;
-  };
- 
-  const connectBLE = async () => {
-    log('Requesting Bluetooth device...');
-    setStatus('Connecting...', 'amber');
-    try {
-      device = await navigator.bluetooth.requestDevice({
-        filters: [{ services: [MESHTASTIC_SERVICE] }],
-        optionalServices: [MESHTASTIC_SERVICE]
+      blState.device = await navigator.bluetooth.requestDevice({
+        acceptAllDevices:true, optionalServices:[SERVICE_UUID]
       });
-    } catch(e) {
-      try {
-        device = await navigator.bluetooth.requestDevice({
-          acceptAllDevices: true,
-          optionalServices: [MESHTASTIC_SERVICE]
-        });
-      } catch(e2) { log('Error: ' + e2.message, 'er'); setStatus('Disconnected',''); return; }
-    }
-    log('Found: ' + (device.name || 'unnamed'));
+    } catch(e2) { log('Error: '+e2.message,'er'); setStatus('Disconnected',''); return; }
+  }
+  log('Found: '+(blState.device.name||'unnamed'));
+  try {
+    blState.server = await blState.device.gatt.connect();
+    await sleep(600);
+  } catch(e) { log('GATT failed: '+e.message,'er'); setStatus('Disconnected',''); return; }
+ 
+  for (let attempt=1; attempt<=3; attempt++) {
     try {
-      server = await device.gatt.connect();
-      log('GATT connected');
-      await sleep(600);
-    } catch(e) { log('GATT failed: ' + e.message, 'er'); setStatus('Disconnected',''); return; }
-    await setupService();
-    device.addEventListener('gattserverdisconnected', () => {
-      connected = false;
-      setStatus('Disconnected','');
-      log('Disconnected','er');
-      setButtons(false);
-      document.getElementById('connect-btn').disabled = false;
-      document.getElementById('connect-btn').textContent = '📶 Reconnect';
-    });
+      if (!blState.server.connected) { blState.server = await blState.device.gatt.connect(); await sleep(500); }
+      const svc = await blState.server.getPrimaryService(SERVICE_UUID);
+      blState.fromRadio = await svc.getCharacteristic(FROMRADIO_UUID);
+      blState.fromNum   = await svc.getCharacteristic(FROMNUM_UUID);
+      blState.toRadio   = await svc.getCharacteristic(TORADIO_UUID);
+      await blState.fromNum.startNotifications();
+      blState.fromNum.addEventListener('characteristicvaluechanged', () => readFromRadio());
+      blState.connected = true;
+      setStatus('Connected: '+(blState.device.name||'device'),'green');
+      setButtons(true);
+      log('Connected! Tap "Scan Nodes" to find nearby nodes.','hi');
+      blState.device.addEventListener('gattserverdisconnected', () => {
+        blState.connected = false;
+        setStatus('Disconnected','');
+        setButtons(false);
+        log('Disconnected','er');
+        document.getElementById('connect-btn').disabled = false;
+        document.getElementById('connect-btn').textContent = '📶 Reconnect';
+      });
+      return;
+    } catch(e) {
+      log('Attempt '+attempt+' failed: '+e.message,'er');
+      if (attempt<3) await sleep(1000);
+    }
+  }
+  setStatus('Failed','');
+  document.getElementById('connect-btn').disabled = false;
+};
+ 
+// ==================== NODE / ENCOUNTER ====================
+const onNodeDetected = (nodeId, name, snr) => {
+  const idStr = nodeId.toString(16).toUpperCase().padStart(8,'0');
+  const now = Date.now();
+ 
+  if (!nodes[idStr]) {
+    nodes[idStr] = {id:idStr, name:name||('Node !'+idStr.slice(-4)), snr, firstSeen:now};
+    log('Node found: '+(name||'!'+idStr.slice(-4)),'hi');
+    renderNodeList();
+  } else {
+    nodes[idStr].name = name || nodes[idStr].name;
+    nodes[idStr].snr = snr;
+  }
+ 
+  const cooldownKey = idStr;
+  if (nodeCooldowns[cooldownKey] && now < nodeCooldowns[cooldownKey]) return;
+ 
+  // chance of encounter
+  if (Math.random() > 0.6) {
+    nodeCooldowns[cooldownKey] = now + 3*60*1000;
+    log('Wild Pokémon appeared from '+nodes[idStr].name+'!','hi');
+    setTimeout(() => startWildEncounter(nodes[idStr], snr), 500);
+  }
+};
+ 
+const renderNodeList = () => {
+  const el = document.getElementById('node-list');
+  const list = Object.values(nodes);
+  if (!list.length) { el.innerHTML = '<div class="empty">No nodes found yet</div>'; return; }
+  el.innerHTML = '';
+  list.forEach(n => {
+    const now = Date.now();
+    const cd = nodeCooldowns[n.id];
+    const onCooldown = cd && now < cd;
+    const remaining = onCooldown ? Math.ceil((cd-now)/1000) : 0;
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<div class="card-title">📡 ${n.name}</div>
+      <div class="card-meta">ID: !${n.id.slice(-4)}${n.snr!==undefined?' · SNR: '+n.snr+' dB':''}
+      ${onCooldown?'<br><span style="color:#f0a030">⏱ Cooldown: '+remaining+'s</span>':'<br><span style="color:#48d058">✓ Active</span>'}</div>`;
+    card.onclick = () => {
+      if (onCooldown) { log('Node on cooldown — wait '+remaining+'s','am'); return; }
+      nodeCooldowns[n.id] = Date.now() + 3*60*1000;
+      startWildEncounter(n, n.snr);
+    };
+    el.appendChild(card);
+  });
+};
+ 
+// cooldown tick
+setInterval(() => {
+  if (document.getElementById('view-world').classList.contains('active')) renderNodeList();
+}, 5000);
+ 
+// ==================== POKEMON FACTORY ====================
+const makePokemon = (dexEntry, level, isWild) => {
+  const lvl = level || (Math.floor(Math.random()*20)+1);
+  const hpMax = Math.floor((2*dexEntry.hp*lvl)/100) + lvl + 10;
+  const atk   = Math.floor((2*dexEntry.atk*lvl)/100) + 5;
+  const def   = Math.floor((2*dexEntry.def*lvl)/100) + 5;
+  const spd   = Math.floor((2*dexEntry.spd*lvl)/100) + 5;
+  const moves = dexEntry.moves.slice(0,4).map(m => ({
+    name:m, pp:(MOVE_DATA[m]||{pp:20}).pp, maxPP:(MOVE_DATA[m]||{maxPP:20}).maxPP
+  }));
+  return {
+    uid: Date.now()+'_'+Math.random().toString(36).slice(2),
+    dexId: dexEntry.id,
+    name: dexEntry.name,
+    type: dexEntry.type,
+    sprite: dexEntry.sprite,
+    level: lvl,
+    hp: hpMax, maxHp: hpMax,
+    atk, def, spd,
+    moves,
+    status: null,     // burn | poison | faint
+    statusTurns: 0,
+    faintedAt: null,
+    isWild: !!isWild,
+    caught: !isWild,
+  };
+};
+ 
+const getActiveMon = () => playerTeam[activeSlot] || null;
+ 
+const getFirstAlive = () => {
+  for (let i=0;i<playerTeam.length;i++) if (playerTeam[i].status!=='faint') return i;
+  return -1;
+};
+ 
+// ==================== WILD ENCOUNTER ====================
+const startWildEncounter = (node, snr) => {
+  if (battleState) return;
+ 
+  // pick pokemon based on snr: stronger signal = rarer/stronger
+  let pool = POKEMON_DATA.slice();
+  const idx = Math.floor(Math.random()*pool.length);
+  const dex = pool[idx];
+  const snrVal = snr !== undefined ? snr : 0;
+  const lvlBoost = Math.max(0, Math.floor((snrVal+20)/5));
+  const baseLevel = Math.floor(Math.random()*15)+1+lvlBoost;
+ 
+  const wildMon = makePokemon(dex, Math.min(baseLevel,50), true);
+ 
+  // need a living pokemon
+  const aliveIdx = getFirstAlive();
+  if (aliveIdx === -1) {
+    if (playerTeam.length === 0) {
+      log('No Pokémon! Starting with a Pikachu...','am');
+      const starter = makePokemon(POKEMON_DATA.find(p=>p.id===25), 5, false);
+      playerTeam.push(starter);
+      activeSlot = 0;
+      renderTeam();
+    } else {
+      log('All Pokémon fainted! Can\'t battle.','er');
+      return;
+    }
+  } else {
+    activeSlot = aliveIdx;
+  }
+ 
+  battleState = {
+    wild: wildMon,
+    playerMon: playerTeam[activeSlot],
+    turn: 0,
+    catchAttempts: 0,
+    escaped: false,
+    node: node,
   };
  
-  if (!navigator.bluetooth) { log('Web Bluetooth not supported!','er'); document.getElementById('connect-btn').disabled = true; }
+  showBattleScreen();
+};
  
-  document.getElementById('connect-btn').addEventListener('click', () => { if (!connected) connectBLE(); });
-  document.getElementById('scan-btn').addEventListener('click', requestNodes);
-  document.getElementById('drain-btn').addEventListener('click', drainBuffer);
-  document.getElementById('dump-btn').addEventListener('click', dumpPackets);
-  document.getElementById('clear-btn').addEventListener('click', () => {
-    nodes = {};
-    document.getElementById('node-list').innerHTML = '<div class="empty" id="empty-state"><div class="empty-icon">&#x1F4E1;</div>List cleared — tap a button to rediscover</div>';
-    document.getElementById('count').textContent = '0 found';
-    log('List cleared', 'am');
+// ==================== BATTLE SCREEN ====================
+const showBattleScreen = () => {
+  document.getElementById('battle-screen').style.display = 'block';
+  document.getElementById('switch-panel').style.display = 'none';
+  renderBattleUI();
+  blogMsg('A wild '+battleState.wild.name+' (Lv.'+battleState.wild.level+') appeared!','em');
+  blogMsg('Go! '+battleState.playerMon.name+'!');
+};
+ 
+const hideBattleScreen = () => {
+  document.getElementById('battle-screen').style.display = 'none';
+  battleState = null;
+};
+ 
+const blogMsg = (msg, cls) => {
+  const el = document.getElementById('battle-log');
+  const d = document.createElement('div');
+  if (cls) d.className = cls;
+  d.textContent = msg;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+};
+ 
+const renderBattleUI = () => {
+  const {wild, playerMon} = battleState;
+  document.getElementById('b-ename').textContent = wild.name;
+  document.getElementById('b-elevel').textContent = 'Lv.'+wild.level;
+  document.getElementById('b-esprite').textContent = wild.sprite;
+  const epct = Math.max(0, wild.hp/wild.maxHp*100);
+  const eBar = document.getElementById('b-ehp');
+  eBar.style.width = epct+'%';
+  eBar.className = 'hp-bar'+(epct<25?' red':epct<50?' yellow':'');
+  document.getElementById('b-ehp-text').textContent = 'HP: '+wild.hp+'/'+wild.maxHp;
+ 
+  const eSt = document.getElementById('b-estatus');
+  eSt.innerHTML = wild.status && wild.status!=='faint' ? `<span class="status-badge ${wild.status}">${wild.status.toUpperCase()}</span>` : '';
+ 
+  document.getElementById('b-pname').textContent = playerMon.name;
+  document.getElementById('b-plevel').textContent = 'Lv.'+playerMon.level;
+  document.getElementById('b-psprite').textContent = playerMon.sprite;
+  const ppct = Math.max(0, playerMon.hp/playerMon.maxHp*100);
+  const pBar = document.getElementById('b-php');
+  pBar.style.width = ppct+'%';
+  pBar.className = 'hp-bar'+(ppct<25?' red':ppct<50?' yellow':'');
+  document.getElementById('b-php-text').textContent = 'HP: '+playerMon.hp+'/'+playerMon.maxHp;
+  const pSt = document.getElementById('b-pstatus');
+  pSt.innerHTML = playerMon.status && playerMon.status!=='faint' ? `<span class="status-badge ${playerMon.status}">${playerMon.status.toUpperCase()}</span>` : '';
+ 
+  // moves
+  const grid = document.getElementById('moves-grid');
+  grid.innerHTML = '';
+  playerMon.moves.forEach((mv, i) => {
+    const md = MOVE_DATA[mv.name] || {power:40,type:'normal'};
+    const btn = document.createElement('button');
+    btn.className = 'move-btn';
+    btn.disabled = mv.pp <= 0 || playerMon.status==='faint';
+    btn.innerHTML = `${mv.name}<span class="pp">PP: ${mv.pp}/${mv.maxPP} · ${md.type}</span>`;
+    btn.onclick = () => doPlayerMove(i);
+    grid.appendChild(btn);
   });
+ 
+  document.getElementById('btn-catch').disabled = false;
+  document.getElementById('btn-run').disabled = false;
+  document.getElementById('btn-switch').disabled = playerTeam.filter(p=>p.status!=='faint').length <= 1;
+  document.getElementById('btn-next-turn').style.display = 'none';
+  document.getElementById('battle-ui').style.display = 'block';
+};
+ 
+// ==================== BATTLE LOGIC ====================
+const calcDamage = (attacker, defender, moveName) => {
+  const md = MOVE_DATA[moveName] || {power:40};
+  if (!md.power) return 0;
+  const base = Math.floor((2*attacker.level/5+2) * md.power * (attacker.atk/defender.def) / 50) + 2;
+  const rng = 0.85 + Math.random()*0.15;
+  return Math.max(1, Math.floor(base*rng));
+};
+ 
+const applyStatus = (mon, status) => {
+  if (mon.status) return false;
+  mon.status = status;
+  mon.statusTurns = 0;
+  return true;
+};
+ 
+const tickStatus = (mon, side) => {
+  if (!mon.status || mon.status==='faint') return;
+  mon.statusTurns++;
+  if (mon.status==='burn' || mon.status==='poison') {
+    const dmg = Math.max(1, Math.floor(mon.maxHp/8));
+    mon.hp = Math.max(0, mon.hp-dmg);
+    blogMsg(mon.name+' took '+dmg+' '+mon.status+' damage.','er');
+    if (mon.statusTurns >= 2) { mon.status = null; mon.statusTurns = 0; blogMsg(mon.name+' recovered from '+mon.status+'!'); }
+  }
+};
+ 
+const doPlayerMove = async (moveIdx) => {
+  if (!battleState) return;
+  disableBattleButtons();
+  const {wild, playerMon} = battleState;
+  const mv = playerMon.moves[moveIdx];
+  mv.pp = Math.max(0, mv.pp-1);
+ 
+  const dmg = calcDamage(playerMon, wild, mv.name);
+  if (dmg > 0) {
+    wild.hp = Math.max(0, wild.hp-dmg);
+    blogMsg(playerMon.name+' used '+mv.name+'! (-'+dmg+' HP)');
+  } else {
+    blogMsg(playerMon.name+' used '+mv.name+'!');
+    // status moves have 30% chance of effect
+    if (Math.random() < 0.3) {
+      const r = Math.random();
+      if (r < 0.5 && applyStatus(wild,'burn')) blogMsg(wild.name+' was burned!','em');
+      else if (applyStatus(wild,'poison')) blogMsg(wild.name+' was poisoned!','em');
+    }
+  }
+ 
+  renderBattleUI();
+  await sleep(400);
+ 
+  if (wild.hp <= 0) {
+    wild.status = 'faint';
+    blogMsg(wild.name+' fainted!','hi');
+    const xp = Math.floor(wild.level*50/7);
+    blogMsg(playerMon.name+' gained '+xp+' (battle won)','hi');
+    battleState.turn++;
+    await sleep(800);
+    hideBattleScreen();
+    renderTeam(); renderDex();
+    log('Defeated '+wild.name,'hi');
+    return;
+  }
+ 
+  // enemy turn
+  await doEnemyMove();
+};
+ 
+const doEnemyMove = async () => {
+  if (!battleState) return;
+  const {wild, playerMon} = battleState;
+ 
+  // pick a random move with PP
+  const available = wild.moves.filter(m=>m.pp>0);
+  if (!available.length) { blogMsg(wild.name+' has no moves left!'); await endTurn(); return; }
+  const mv = available[Math.floor(Math.random()*available.length)];
+  mv.pp = Math.max(0, mv.pp-1);
+ 
+  const dmg = calcDamage(wild, playerMon, mv.name);
+  if (dmg > 0) {
+    playerMon.hp = Math.max(0, playerMon.hp-dmg);
+    blogMsg(wild.name+' used '+mv.name+'! (-'+dmg+' HP)');
+  } else {
+    blogMsg(wild.name+' used '+mv.name+'!');
+    if (Math.random() < 0.25) {
+      const r = Math.random();
+      if (r < 0.5 && applyStatus(playerMon,'burn')) blogMsg(playerMon.name+' was burned!','er');
+      else if (applyStatus(playerMon,'poison')) blogMsg(playerMon.name+' was poisoned!','er');
+    }
+  }
+ 
+  renderBattleUI();
+  await sleep(400);
+ 
+  if (playerMon.hp <= 0) {
+    playerMon.status = 'faint';
+    playerMon.faintedAt = Date.now();
+    blogMsg(playerMon.name+' fainted!','er');
+    const next = getFirstAlive();
+    if (next === -1) {
+      blogMsg('All Pokémon fainted! Running away...','er');
+      await sleep(1000);
+      hideBattleScreen(); renderTeam();
+      log('All fainted — battle over','er');
+      return;
+    }
+    blogMsg('Switch to another Pokémon!','em');
+    showSwitchPanel(true);
+    return;
+  }
+ 
+  await endTurn();
+};
+ 
+const endTurn = async () => {
+  battleState.turn++;
+  tickStatus(battleState.wild, 'enemy');
+  tickStatus(battleState.playerMon, 'player');
+  renderBattleUI();
+  enableBattleButtons();
+};
+ 
+const disableBattleButtons = () => {
+  ['btn-catch','btn-run','btn-switch'].forEach(id=>document.getElementById(id).disabled=true);
+  document.querySelectorAll('.move-btn').forEach(b=>b.disabled=true);
+};
+const enableBattleButtons = () => renderBattleUI();
+ 
+// ==================== CATCH ====================
+const doCatch = async () => {
+  if (!battleState) return;
+  const {wild} = battleState;
+  if (battleState.catchAttempts >= 3) { blogMsg('No more Poké Balls!','er'); return; }
+  disableBattleButtons();
+  battleState.catchAttempts++;
+ 
+  const hpRatio = wild.hp / wild.maxHp;
+  const catchRate = Math.max(0.05, (1-hpRatio)*0.6 + (wild.status?0.2:0) + (1/(wild.level+1))*0.3);
+ 
+  showCatchAnimation(wild, catchRate, () => {
+    if (catchState.caught) {
+      wild.caught = true;
+      const owned = playerTeam.find(p=>p.dexId===wild.dexId);
+      if (!owned && playerTeam.length < 6) {
+        wild.isWild = false;
+        playerTeam.push(wild);
+        if (playerTeam.filter(p=>p.status!=='faint').length===1) activeSlot = playerTeam.length-1;
+      }
+      caughtBox.push({...wild});
+      renderTeam(); renderDex();
+      log('Caught '+wild.name+'!','hi');
+      setTimeout(() => { hideBattleScreen(); }, 500);
+    } else {
+      if (battleState.catchAttempts >= 3) {
+        blogMsg('Out of Poké Balls!','er');
+        enableBattleButtons();
+      } else {
+        blogMsg(wild.name+' broke free!','er');
+        // enemy attacks after break
+        setTimeout(() => doEnemyMove(), 600);
+      }
+    }
+  });
+};
+ 
+// ==================== CATCH ANIMATION ====================
+const POKEMON_EMOJIS = POKEMON_DATA.map(p=>p.sprite);
+ 
+const showCatchAnimation = (wildMon, catchRate, cb) => {
+  catchState = {caught: Math.random() < catchRate, wildMon, cb};
+  document.getElementById('catch-screen').classList.add('active');
+  document.getElementById('catch-title').textContent = 'Throwing Poké Ball!';
+  document.getElementById('catch-final').textContent = '';
+  document.getElementById('catch-msg').textContent = '';
+  document.getElementById('catch-close-btn').style.display = 'none';
+  const slots = [0,1,2].map(i=>document.getElementById('slot'+i));
+  slots.forEach(s=>{ s.className='slot spinning'; s.textContent='?'; });
+ 
+  // spin each slot randomly then land
+  const spinSlot = (slotEl, delay, finalEmoji, isBall) => new Promise(resolve => {
+    setTimeout(() => {
+      let count = 0;
+      const interval = setInterval(() => {
+        slotEl.textContent = isBall ? '🔴' : POKEMON_EMOJIS[Math.floor(Math.random()*POKEMON_EMOJIS.length)];
+        count++;
+        if (count > 10) {
+          clearInterval(interval);
+          slotEl.textContent = finalEmoji;
+          slotEl.className = 'slot '+(isBall?'result-ball':'result-mon');
+          resolve();
+        }
+      }, 80);
+    }, delay);
+  });
+ 
+  const targetEmoji = catchState.caught ? wildMon.sprite : wildMon.sprite;
+  // all 3 slots spin with stagger
+  Promise.all([
+    spinSlot(slots[0], 0,    wildMon.sprite, false),
+    spinSlot(slots[1], 300,  wildMon.sprite, false),
+    spinSlot(slots[2], 600,  wildMon.sprite, false),
+  ]).then(async () => {
+    if (catchState.caught) {
+      // all line up as pokemon, then ball hits
+      document.getElementById('catch-title').textContent = 'Direct hit!';
+      await sleep(400);
+      slots.forEach(s=>{ s.textContent='🔴'; s.className='slot result-ball'; });
+      await sleep(300);
+      document.getElementById('catch-final').textContent = wildMon.sprite;
+      document.getElementById('catch-msg').textContent = wildMon.name+' was caught!';
+      document.getElementById('catch-msg').style.color = '#48d058';
+    } else {
+      document.getElementById('catch-title').textContent = 'Oh no!';
+      slots[Math.floor(Math.random()*3)].textContent = '❌';
+      document.getElementById('catch-msg').textContent = wildMon.name+' broke free!';
+      document.getElementById('catch-msg').style.color = '#e24b4a';
+    }
+    document.getElementById('catch-close-btn').style.display = 'block';
+  });
+};
+ 
+document.getElementById('catch-close-btn').addEventListener('click', () => {
+  document.getElementById('catch-screen').classList.remove('active');
+  if (catchState && catchState.cb) catchState.cb();
+  catchState = null;
+});
+ 
+// ==================== SWITCH ====================
+const showSwitchPanel = (forced) => {
+  const panel = document.getElementById('switch-panel');
+  const list  = document.getElementById('switch-list');
+  document.getElementById('battle-ui').style.display = forced ? 'none' : 'none';
+  document.getElementById('btn-cancel-switch').style.display = forced ? 'none' : 'block';
+  panel.style.display = 'block';
+  list.innerHTML = '';
+  playerTeam.forEach((mon, i) => {
+    if (i === activeSlot) return;
+    const el = document.createElement('div');
+    el.className = 'team-slot'+(mon.status==='faint'?' fainted':'');
+    const healInfo = mon.status==='faint' && mon.faintedAt ? ' (healing '+getHealTime(mon)+')' : '';
+    el.innerHTML = `<div class="slot-sprite">${mon.sprite}</div>
+      <div class="slot-info">
+        <div class="slot-name">${mon.name} Lv.${mon.level}</div>
+        <div class="slot-stats">HP: ${mon.hp}/${mon.maxHp}${healInfo}</div>
+      </div>`;
+    if (mon.status !== 'faint') {
+      el.onclick = () => {
+        activeSlot = i;
+        battleState.playerMon = playerTeam[activeSlot];
+        panel.style.display = 'none';
+        document.getElementById('battle-ui').style.display = 'block';
+        blogMsg('Go, '+battleState.playerMon.name+'!','hi');
+        renderBattleUI();
+        if (!forced) doEnemyMove();
+      };
+    }
+    list.appendChild(el);
+  });
+};
+ 
+document.getElementById('btn-cancel-switch').addEventListener('click', () => {
+  document.getElementById('switch-panel').style.display = 'none';
+  document.getElementById('battle-ui').style.display = 'block';
+  enableBattleButtons();
+});
+ 
+// ==================== HEAL TIMER ====================
+const getHealTime = mon => {
+  if (!mon.faintedAt) return '';
+  const ms = 30*60*1000 - (Date.now()-mon.faintedAt);
+  if (ms <= 0) { mon.status = null; mon.hp = Math.floor(mon.maxHp/2); mon.faintedAt = null; return ''; }
+  const m = Math.floor(ms/60000);
+  const s = Math.floor((ms%60000)/1000);
+  return m+'m '+s+'s';
+};
+ 
+setInterval(() => {
+  playerTeam.forEach(mon => {
+    if (mon.status==='faint' && mon.faintedAt) {
+      const elapsed = Date.now()-mon.faintedAt;
+      if (elapsed >= 30*60*1000) {
+        mon.status = null;
+        mon.hp = Math.floor(mon.maxHp/2);
+        mon.faintedAt = null;
+        log(mon.name+' has recovered!','hi');
+        renderTeam();
+      }
+    }
+  });
+}, 10000);
+ 
+// ==================== TEAM / DEX RENDER ====================
+const renderTeam = () => {
+  const el = document.getElementById('team-list');
+  if (!playerTeam.length) { el.innerHTML='<div class="empty">No Pokémon yet</div>'; return; }
+  el.innerHTML = '';
+  playerTeam.forEach((mon, i) => {
+    const div = document.createElement('div');
+    div.className = 'team-slot'+(i===activeSlot?' active-slot':'')+(mon.status==='faint'?' fainted':'');
+    const pct = Math.max(0,(mon.hp/mon.maxHp)*100);
+    const healStr = mon.status==='faint'&&mon.faintedAt ? '<div class="heal-timer">⏱ '+getHealTime(mon)+'</div>' : '';
+    const stStr = mon.status&&mon.status!=='faint'?`<span class="status-badge ${mon.status}">${mon.status.toUpperCase()}</span>`:'';
+    div.innerHTML = `
+      <div class="slot-sprite">${mon.sprite}</div>
+      <div class="slot-info">
+        <div class="slot-name">${mon.name} <span style="color:#666;font-size:10px">Lv.${mon.level}</span>${i===activeSlot?'<span style="color:#f8d030;font-size:9px;margin-left:6px">▲ ACTIVE</span>':''}</div>
+        <div class="slot-stats">HP ${mon.hp}/${mon.maxHp} · ATK ${mon.atk} · DEF ${mon.def} · SPD ${mon.spd} ${stStr}</div>
+        <div class="slot-hp-bg"><div class="slot-hp-bar" style="width:${pct}%;background:${pct<25?'#e24b4a':pct<50?'#f8d030':'#48d058'}"></div></div>
+        ${healStr}
+      </div>`;
+    div.onclick = () => {
+      if (mon.status==='faint') { log(mon.name+' has fainted — wait for heal','er'); return; }
+      activeSlot = i;
+      renderTeam();
+      log('Active Pokémon: '+mon.name,'hi');
+    };
+    el.appendChild(div);
+  });
+};
+ 
+const renderDex = () => {
+  const el = document.getElementById('dex-list');
+  if (!caughtBox.length) { el.innerHTML='<div class="empty">No Pokémon caught yet</div>'; return; }
+  el.innerHTML = '';
+  // dedupe by dexId, show all copies
+  caughtBox.forEach(mon => {
+    const div = document.createElement('div');
+    div.className = 'dex-card';
+    const moveStr = mon.moves.map(m=>m.name).join(', ');
+    div.innerHTML = `
+      <div class="dex-sprite">${mon.sprite}</div>
+      <div class="dex-info">
+        <div class="dex-name">${mon.name} <span class="badge ${mon.type}">${mon.type}</span> <span style="color:#666;font-size:10px">Lv.${mon.level}</span></div>
+        <div class="dex-meta">HP ${mon.maxHp} · ATK ${mon.atk} · DEF ${mon.def} · SPD ${mon.spd}</div>
+        <div class="dex-moves">${moveStr}</div>
+      </div>`;
+    el.appendChild(div);
+  });
+};
+ 
+// ==================== DEMO MODE ====================
+const simulateNode = () => {
+  const fakeNames = ['Watchtower','Ridgeline','Park Node','East End','Harbor'];
+  const name = fakeNames[Math.floor(Math.random()*fakeNames.length)];
+  const fakeId = Math.floor(Math.random()*0xFFFF+0x10001);
+  const snr = Math.floor(Math.random()*30)-15;
+  log('[DEMO] Simulated node: '+name,'am');
+  onNodeDetected(fakeId, name, snr);
+};
+ 
+// ==================== TABS ====================
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('view-'+tab.dataset.tab).classList.add('active');
+    if (tab.dataset.tab==='team') renderTeam();
+    if (tab.dataset.tab==='dex') renderDex();
+  });
+});
+ 
+// ==================== BATTLE BUTTON EVENTS ====================
+document.getElementById('btn-catch').addEventListener('click', doCatch);
+document.getElementById('btn-run').addEventListener('click', () => {
+  blogMsg('Got away safely!','hi');
+  setTimeout(() => { hideBattleScreen(); log('Ran from '+battleState?.wild?.name,'am'); }, 400);
+});
+document.getElementById('btn-switch').addEventListener('click', () => showSwitchPanel(false));
+ 
+// ==================== BLE BUTTON EVENTS ====================
+document.getElementById('connect-btn').addEventListener('click', () => {
+  if (!blState.connected) connectBLE();
+});
+document.getElementById('drain-btn').addEventListener('click', drainBuffer);
+document.getElementById('clear-btn').addEventListener('click', () => {
+  nodes = {};
+  renderNodeList();
+  log('Nodes cleared','am');
+});
+ 
+// ==================== BLUETOOTH CHECK ====================
+if (!navigator.bluetooth) {
+  log('Web Bluetooth not supported — Demo mode active (click Scan Nodes)','am');
+  document.getElementById('connect-btn').textContent = '🎮 Demo Mode';
+  document.getElementById('connect-btn').onclick = () => {
+    setStatus('Demo Mode','amber');
+    setButtons(true);
+    document.getElementById('drain-btn').onclick = simulateNode;
+    log('Demo mode — clicking Scan Nodes simulates a nearby node','am');
+  };
+}
 </script>
 </body>
 </html>
+ 
