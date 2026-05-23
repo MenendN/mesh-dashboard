@@ -1,7 +1,3 @@
-
-
-raw
-Index · HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -30,15 +26,22 @@ Index · HTML
     .node-meta { font-size: 12px; color: #888; margin-top: 3px; }
     .empty { text-align: center; padding: 40px 20px; color: #555; font-size: 14px; }
     .empty-icon { font-size: 40px; margin-bottom: 10px; }
-    .log { margin-top: 24px; background: #1a1d27; border-radius: 10px; padding: 12px; font-family: monospace; font-size: 12px; color: #666; min-height: 60px; max-height: 130px; overflow-y: auto; border: 1px solid #2a2d3a; }
+    .log { margin-top: 24px; background: #1a1d27; border-radius: 10px; padding: 12px; font-family: monospace; font-size: 12px; color: #666; min-height: 60px; max-height: 160px; overflow-y: auto; border: 1px solid #2a2d3a; }
     .log div { margin-bottom: 2px; }
-    .log div.new { color: #1D9E75; }
+    .log div.hi { color: #1D9E75; }
+    .log div.er { color: #e24b4a; }
+    .warn { background: #2a2000; border: 1px solid #554400; border-radius: 10px; padding: 12px 14px; font-size: 13px; color: #EF9F27; margin-bottom: 16px; display: none; }
   </style>
 </head>
 <body>
  
   <h1>PokéMesh Scanner</h1>
   <p class="subtitle">Discovers nearby Meshtastic nodes via Bluetooth</p>
+ 
+  <div class="warn" id="no-ble">
+    &#x26A0; Web Bluetooth not supported in this browser.<br>
+    Use <strong>Chrome on desktop</strong> or <strong>BLE Link on iOS</strong>.
+  </div>
  
   <div class="status-row">
     <div class="dot" id="dot"></div>
@@ -65,15 +68,16 @@ Index · HTML
   const MESHTASTIC_SERVICE = '6ba1b218-15a8-461f-9fa8-5d6e91588c8a';
   const FROMRADIO_CHAR    = '2c55cbb9-5b76-4a30-95af-a62fc1f7e5d9';
   const FROMNUM_CHAR      = 'ed9da18c-a800-4f66-a670-aa7547e34453';
+  const TORADIO_CHAR      = 'f75c76d2-129e-4dad-a1dd-7866124401e7';
  
   let nodes = {};
   let connected = false;
   let device, server, fromRadioChar, fromNumChar;
  
-  const log = (msg, highlight) => {
+  const log = (msg, cls) => {
     const el = document.getElementById('log');
     const line = document.createElement('div');
-    if (highlight) line.className = 'new';
+    if (cls) line.className = cls;
     line.textContent = '> ' + msg;
     el.appendChild(line);
     el.scrollTop = el.scrollHeight;
@@ -82,100 +86,153 @@ Index · HTML
   const setStatus = (text, state) => {
     document.getElementById('status-text').textContent = text;
     const dot = document.getElementById('dot');
-    dot.className = 'dot';
-    if (state === 'green') dot.classList.add('green');
-    if (state === 'amber') dot.classList.add('amber');
+    dot.className = 'dot' + (state ? ' ' + state : '');
   };
  
   const addNode = (id, name, snr) => {
     if (nodes[id]) return;
     nodes[id] = true;
- 
     document.getElementById('empty-state')?.remove();
-    const keys = Object.keys(nodes).length;
-    document.getElementById('count').textContent = keys + ' found';
- 
-    const shortId = id.toString(16).toUpperCase().padStart(8,'0').slice(-4);
-    const snrText = snr !== undefined ? 'SNR: ' + snr + ' dB' : '';
- 
+    const count = Object.keys(nodes).length;
+    document.getElementById('count').textContent = count + ' found';
+    const shortId = Number(id).toString(16).toUpperCase().padStart(8,'0').slice(-4);
+    const snrText = snr !== undefined ? ' &nbsp;·&nbsp; SNR: ' + snr + ' dB' : '';
     const card = document.createElement('div');
     card.className = 'node-card';
     card.innerHTML =
       '<div class="checkmark">&#x2713;</div>' +
       '<div style="flex:1">' +
         '<div class="node-name">' + (name || 'Unknown Node') + '</div>' +
-        '<div class="node-meta">ID: !' + shortId + (snrText ? ' &nbsp;·&nbsp; ' + snrText : '') + '</div>' +
+        '<div class="node-meta">ID: !' + shortId + snrText + '</div>' +
       '</div>';
     document.getElementById('node-list').appendChild(card);
-    log('New node: ' + (name || '!' + shortId), true);
+    log('Node discovered: ' + (name || '!' + shortId), 'hi');
+  };
+ 
+  const tryParseProtobuf = (bytes) => {
+    // Walk the bytes looking for readable strings (node names)
+    // and 4-byte sequences that look like node IDs
+    let names = [];
+    let i = 0;
+    while (i < bytes.length) {
+      if (bytes[i] >= 32 && bytes[i] < 127) {
+        let str = '';
+        let j = i;
+        while (j < bytes.length && bytes[j] >= 32 && bytes[j] < 127) {
+          str += String.fromCharCode(bytes[j]);
+          j++;
+        }
+        if (str.length >= 2 && str.length <= 32) names.push(str);
+        i = j;
+      } else {
+        i++;
+      }
+    }
+    return names;
   };
  
   const parsePacket = (buffer) => {
     try {
       const bytes = new Uint8Array(buffer);
-      if (bytes.length < 4) return;
+      if (bytes.length < 2) return;
  
-      let name = '';
+      log('Packet received (' + bytes.length + ' bytes)');
+ 
+      const view = new DataView(buffer);
       let nodeId = null;
+      let snr = undefined;
  
-      for (let i = 0; i < bytes.length - 3; i++) {
-        if (bytes[i] >= 32 && bytes[i] < 127) {
-          let str = '';
-          for (let j = i; j < Math.min(i + 40, bytes.length); j++) {
-            if (bytes[j] >= 32 && bytes[j] < 127) str += String.fromCharCode(bytes[j]);
-            else break;
+      // Try to extract node ID from various offsets
+      for (let offset of [4, 0, 8]) {
+        if (bytes.length >= offset + 4) {
+          const candidate = view.getUint32(offset, false);
+          if (candidate !== 0 && candidate !== 0xFFFFFFFF && candidate > 0x1000) {
+            nodeId = candidate;
+            break;
           }
-          if (str.length >= 3 && !name) name = str;
         }
       }
  
-      const view = new DataView(buffer);
-      if (bytes.length >= 8) {
-        nodeId = view.getUint32(4, false);
-        if (nodeId === 0 || nodeId === 0xFFFFFFFF) nodeId = null;
+      // Try to find SNR (usually a small signed value)
+      for (let offset of [bytes.length - 2, bytes.length - 4]) {
+        if (offset >= 0) {
+          const candidate = view.getInt8(offset);
+          if (candidate >= -30 && candidate <= 15) {
+            snr = candidate;
+            break;
+          }
+        }
       }
  
-      if (!nodeId) {
-        nodeId = Math.abs(hashStr(name || 'node' + Date.now()));
+      const names = tryParseProtobuf(bytes);
+      const name = names.find(n => n.length >= 2 && !/^[0-9a-f]+$/i.test(n)) || null;
+ 
+      if (!nodeId && name) {
+        nodeId = Math.abs(name.split('').reduce((h, c) => Math.imul(31, h) + c.charCodeAt(0) | 0, 0));
       }
  
-      log('Packet ' + bytes.length + ' bytes' + (name ? ' name:' + name : ''));
-      addNode(nodeId, name || null, undefined);
+      if (nodeId || name) {
+        addNode(nodeId || name, name, snr);
+      }
     } catch(e) {
-      log('Parse error: ' + e.message);
+      log('Parse error: ' + e.message, 'er');
     }
-  };
- 
-  const hashStr = (s) => {
-    let h = 0;
-    for (let i = 0; i < s.length; i++) h = Math.imul(31, h) + s.charCodeAt(i) | 0;
-    return h;
   };
  
   const readFromRadio = async () => {
     try {
       const val = await fromRadioChar.readValue();
-      if (val.byteLength > 0) parsePacket(val.buffer);
+      if (val && val.byteLength > 0) parsePacket(val.buffer);
     } catch(e) {
-      log('Read error: ' + e.message);
+      log('Read error: ' + e.message, 'er');
     }
   };
  
-  document.getElementById('connect-btn').addEventListener('click', async () => {
-    if (connected) return;
-    try {
-      log('Requesting Bluetooth device...');
-      setStatus('Connecting...', 'amber');
+  const connectBLE = async () => {
+    log('Requesting Bluetooth device...');
+    setStatus('Connecting...', 'amber');
  
-      device = await navigator.bluetooth.requestDevice({
-        filters: [{ services: [MESHTASTIC_SERVICE] }],
+    // Try with Meshtastic service filter first, fall back to acceptAllDevices
+    let dev;
+    try {
+      dev = await navigator.bluetooth.requestDevice({
+        filters: [
+          { services: [MESHTASTIC_SERVICE] },
+          { namePrefix: 'Meshtastic' },
+          { namePrefix: 'Heltec' },
+          { namePrefix: 'T-Beam' },
+          { namePrefix: 'RAK' },
+          { namePrefix: 'TLora' }
+        ],
         optionalServices: [MESHTASTIC_SERVICE]
       });
+    } catch(e) {
+      log('Filter scan failed, trying all devices...', 'er');
+      try {
+        dev = await navigator.bluetooth.requestDevice({
+          acceptAllDevices: true,
+          optionalServices: [MESHTASTIC_SERVICE]
+        });
+      } catch(e2) {
+        log('Bluetooth error: ' + e2.message, 'er');
+        setStatus('Disconnected', '');
+        return;
+      }
+    }
  
-      log('Found: ' + device.name);
+    device = dev;
+    log('Found: ' + (device.name || 'unnamed device'));
+ 
+    try {
       server = await device.gatt.connect();
       log('GATT connected');
+    } catch(e) {
+      log('GATT connect failed: ' + e.message, 'er');
+      setStatus('Disconnected', '');
+      return;
+    }
  
+    try {
       const service = await server.getPrimaryService(MESHTASTIC_SERVICE);
       fromRadioChar = await service.getCharacteristic(FROMRADIO_CHAR);
       fromNumChar   = await service.getCharacteristic(FROMNUM_CHAR);
@@ -184,30 +241,42 @@ Index · HTML
       fromNumChar.addEventListener('characteristicvaluechanged', readFromRadio);
  
       connected = true;
-      setStatus('Connected to ' + device.name, 'green');
+      setStatus('Connected: ' + (device.name || 'device'), 'green');
  
       const btn = document.getElementById('connect-btn');
-      btn.textContent = 'Connected';
+      btn.textContent = '✓ Connected';
       btn.disabled = true;
  
       const empty = document.getElementById('empty-state');
       if (empty) empty.innerHTML = '<div class="empty-icon">&#x1F4E1;</div>Scanning for nodes...';
  
-      log('Listening for nodes...');
+      log('Listening for node packets...', 'hi');
  
       device.addEventListener('gattserverdisconnected', () => {
         connected = false;
         setStatus('Disconnected', '');
-        log('Device disconnected');
+        log('Device disconnected', 'er');
         const btn = document.getElementById('connect-btn');
         btn.textContent = '📶 Reconnect';
         btn.disabled = false;
       });
  
     } catch(e) {
-      log('Error: ' + e.message);
-      setStatus('Disconnected', '');
+      log('Service error: ' + e.message, 'er');
+      log('Device connected but Meshtastic service not found. Is this a Meshtastic node?', 'er');
+      setStatus('Service not found', '');
     }
+  };
+ 
+  // Check Web Bluetooth support
+  if (!navigator.bluetooth) {
+    document.getElementById('no-ble').style.display = 'block';
+    document.getElementById('connect-btn').disabled = true;
+    log('Web Bluetooth not available in this browser', 'er');
+  }
+ 
+  document.getElementById('connect-btn').addEventListener('click', () => {
+    if (!connected) connectBLE();
   });
 </script>
 </body>
