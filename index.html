@@ -7,243 +7,263 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#1a1a2e;color:#fff;overflow:hidden;height:100vh;width:100vw;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#1a1a2e;color:#fff;height:100vh;width:100vw;overflow:hidden;}
  
-  /* SCREENS */
-  .screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;}
-  .screen.hidden{display:none;}
+/* ── STARTER SCREEN ── */
+#starter-screen{position:absolute;inset:0;z-index:200;background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;}
+#starter-screen.hidden{display:none;}
+#starter-screen h1{font-size:30px;font-weight:800;color:#FFD700;text-shadow:0 0 20px #FFD70088;margin-bottom:4px;}
+#starter-screen p{font-size:13px;color:#aaa;margin-bottom:20px;}
+.starter-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:380px;}
+.starter-card{background:#ffffff11;border:2px solid #ffffff22;border-radius:14px;padding:12px 6px;text-align:center;cursor:pointer;transition:all .2s;}
+.starter-card:active{border-color:#FFD700;background:#FFD70022;transform:scale(1.04);}
+.starter-card img{width:68px;height:68px;image-rendering:pixelated;}
+.starter-card .sname{font-size:11px;font-weight:700;margin-top:4px;}
+.starter-card .stype{font-size:10px;color:#aaa;}
+.shiny-badge{display:inline-block;background:#FFD700;color:#000;font-size:9px;font-weight:700;padding:1px 5px;border-radius:20px;margin-top:2px;}
  
-  /* STARTER SCREEN */
-  #starter-screen{background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);padding:20px;}
-  #starter-screen h1{font-size:28px;font-weight:800;color:#FFD700;text-shadow:0 0 20px #FFD70088;margin-bottom:6px;text-align:center;}
-  #starter-screen p{font-size:13px;color:#aaa;margin-bottom:24px;text-align:center;}
-  .starter-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:100%;max-width:360px;}
-  .starter-card{background:#ffffff11;border:2px solid #ffffff22;border-radius:16px;padding:14px 8px;text-align:center;cursor:pointer;transition:all .2s;}
-  .starter-card:hover,.starter-card:active{border-color:#FFD700;background:#FFD70022;transform:scale(1.04);}
-  .starter-card img{width:72px;height:72px;image-rendering:pixelated;}
-  .starter-card .name{font-size:12px;font-weight:600;margin-top:6px;color:#fff;}
-  .starter-card .type{font-size:10px;color:#aaa;margin-top:2px;}
-  .shiny-badge{display:inline-block;background:#FFD700;color:#000;font-size:9px;font-weight:700;padding:1px 5px;border-radius:20px;margin-top:3px;}
+/* ── MAIN LAYOUT ── */
+#game-screen{position:absolute;inset:0;display:flex;flex-direction:column;}
+#game-screen.hidden{display:none;}
  
-  /* MAP */
-  #map{position:absolute;inset:0;z-index:0;}
-  #map-ui{position:absolute;inset:0;z-index:10;pointer-events:none;}
+/* TOP PANEL — 2/3 */
+#top-panel{flex:0 0 calc(100vh * 2/3);display:flex;flex-direction:column;background:#1a1a2e;position:relative;overflow:hidden;}
  
-  /* TOP BAR */
-  #topbar{position:absolute;top:0;left:0;right:0;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(#000a,transparent);pointer-events:auto;z-index:20;}
-  #topbar .logo{font-size:18px;font-weight:800;color:#FFD700;text-shadow:0 0 10px #FFD70088;}
-  #ble-btn{background:#1D9E75;border:none;color:#fff;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;}
-  #ble-btn.connected{background:#0F6E56;}
+/* TOPBAR */
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#0f1117;border-bottom:1px solid #ffffff11;z-index:10;flex-shrink:0;}
+#topbar .logo{font-size:17px;font-weight:800;color:#FFD700;}
+#ble-btn{background:#1D9E75;border:none;color:#fff;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;}
+#ble-btn.connected{background:#0F6E56;}
  
-  /* PARTY BAR */
-  #party-bar{position:absolute;bottom:80px;left:0;right:0;display:flex;gap:8px;padding:0 14px;pointer-events:auto;z-index:20;overflow-x:auto;}
-  .party-slot{background:#000a;border:2px solid #ffffff33;border-radius:12px;padding:6px;text-align:center;min-width:56px;cursor:pointer;flex-shrink:0;}
-  .party-slot.active{border-color:#FFD700;}
-  .party-slot img{width:40px;height:40px;image-rendering:pixelated;}
-  .party-slot .hp-bar{height:3px;background:#333;border-radius:2px;margin-top:3px;}
-  .party-slot .hp-fill{height:100%;background:#1D9E75;border-radius:2px;transition:width .3s;}
+/* PARTY + STATUS AREA */
+#main-area{flex:1;display:flex;flex-direction:column;padding:12px 14px;gap:10px;overflow-y:auto;}
  
-  /* BOTTOM BAR */
-  #bottombar{position:absolute;bottom:0;left:0;right:0;padding:10px 14px;display:flex;gap:8px;background:linear-gradient(transparent,#000c);pointer-events:auto;z-index:20;}
-  #bottombar button{flex:1;padding:10px;border-radius:12px;border:none;font-size:13px;font-weight:600;cursor:pointer;}
-  #btn-scan{background:#1a3a8f;color:#fff;}
-  #btn-drain{background:#2a2d3a;color:#aaa;}
+/* PARTY GRID */
+#party-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.party-card{background:#0f1117;border:2px solid #ffffff15;border-radius:12px;padding:8px;text-align:center;cursor:pointer;transition:border .2s;}
+.party-card.active{border-color:#FFD700;}
+.party-card.fainted{opacity:.4;}
+.party-card img{width:52px;height:52px;image-rendering:pixelated;}
+.party-card .pname{font-size:11px;font-weight:600;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.party-card .hp-bar{height:4px;background:#2a2d3a;border-radius:2px;margin-top:4px;}
+.party-card .hp-fill{height:100%;border-radius:2px;transition:width .3s;}
  
-  /* ENCOUNTER OVERLAY */
-  #encounter{position:absolute;inset:0;z-index:50;background:linear-gradient(135deg,#1a1a2e,#0f3460);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:20px;}
-  #encounter.hidden{display:none;}
-  #enc-title{font-size:13px;color:#aaa;margin-bottom:4px;}
-  #enc-name{font-size:24px;font-weight:800;color:#FFD700;margin-bottom:2px;}
-  #enc-meta{font-size:12px;color:#888;margin-bottom:16px;}
+/* INFO ROW */
+#info-row{display:flex;gap:8px;}
+#node-count{flex:1;background:#0f1117;border-radius:10px;padding:10px;font-size:12px;color:#aaa;border:1px solid #ffffff11;}
+#node-count span{display:block;font-size:20px;font-weight:700;color:#1D9E75;}
+#gps-box{flex:1;background:#0f1117;border-radius:10px;padding:10px;font-size:11px;color:#aaa;border:1px solid #ffffff11;}
  
-  /* BATTLE SCENE */
-  #battle-scene{width:100%;max-width:380px;height:200px;background:linear-gradient(#87CEEB,#87CEEB 60%,#90EE90 60%);border-radius:16px;position:relative;overflow:hidden;margin-bottom:16px;}
-  #wild-platform{position:absolute;top:20px;right:20px;text-align:center;}
-  #wild-sprite{width:96px;height:96px;image-rendering:pixelated;filter:drop-shadow(0 4px 8px #0008);}
-  #wild-sprite.shiny{filter:drop-shadow(0 0 12px #FFD700) drop-shadow(0 4px 8px #0008);}
-  #player-platform{position:absolute;bottom:10px;left:20px;text-align:center;}
-  #player-battle-sprite{width:80px;height:80px;image-rendering:pixelated;filter:drop-shadow(0 4px 8px #0008);transform:scaleX(-1);}
+/* ACTION BTNS */
+#action-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+#action-row button{padding:10px;border-radius:10px;border:none;font-size:12px;font-weight:600;cursor:pointer;color:#fff;}
+#btn-scan{background:#1a3a8f;}
+#btn-drain{background:#2a2d3a;}
  
-  /* HEALTH BARS */
-  .battle-hud{width:100%;max-width:380px;margin-bottom:12px;}
-  .hud-row{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;}
-  .hud-bar{height:8px;background:#333;border-radius:4px;overflow:hidden;}
-  .hud-fill{height:100%;border-radius:4px;transition:width .4s;}
-  .hud-fill.green{background:#1D9E75;}
-  .hud-fill.yellow{background:#EF9F27;}
-  .hud-fill.red{background:#e24b4a;}
+/* BOTTOM MAP PANEL — 1/3 */
+#map-panel{flex:0 0 calc(100vh / 3);position:relative;border-top:2px solid #FFD70033;}
+#map{position:absolute;inset:0;}
+#node-toast{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:#1D9E75dd;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;z-index:10;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;}
+#node-toast.show{opacity:1;}
  
-  /* BATTLE LOG */
-  #battle-log{width:100%;max-width:380px;background:#0008;border-radius:10px;padding:10px 12px;font-size:13px;color:#ddd;min-height:44px;margin-bottom:12px;border:1px solid #ffffff11;}
+/* ── ENCOUNTER OVERLAY ── */
+#encounter{position:absolute;inset:0;z-index:150;background:linear-gradient(160deg,#1a1a2e,#0f3460);display:flex;flex-direction:column;align-items:center;padding:16px;overflow-y:auto;}
+#encounter.hidden{display:none;}
+#enc-title{font-size:12px;color:#aaa;margin-bottom:2px;}
+#enc-name{font-size:22px;font-weight:800;color:#FFD700;}
+#enc-meta{font-size:11px;color:#888;margin-bottom:10px;}
  
-  /* BATTLE BUTTONS */
-  #battle-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;max-width:380px;}
-  #battle-btns button{padding:12px;border-radius:12px;border:none;font-size:14px;font-weight:600;cursor:pointer;}
-  #btn-attack{background:#e24b4a;color:#fff;}
-  #btn-catch{background:#FFD700;color:#000;}
-  #btn-run{background:#2a2d3a;color:#aaa;}
-  #btn-swap{background:#1a3a8f;color:#fff;}
+/* BATTLE SCENE */
+#battle-scene{width:100%;max-width:360px;height:180px;background:linear-gradient(#87CEEB 0%,#87CEEB 55%,#90EE90 55%);border-radius:14px;position:relative;overflow:hidden;margin-bottom:10px;flex-shrink:0;}
+#wild-platform{position:absolute;top:14px;right:16px;text-align:center;}
+#wild-sprite{width:90px;height:90px;image-rendering:pixelated;filter:drop-shadow(0 4px 8px #0008);}
+#wild-sprite.shiny{filter:drop-shadow(0 0 14px #FFD700) drop-shadow(0 4px 8px #0008);}
+#player-platform{position:absolute;bottom:8px;left:16px;}
+#player-battle-sprite{width:76px;height:76px;image-rendering:pixelated;transform:scaleX(-1);filter:drop-shadow(0 4px 8px #0008);}
  
-  /* ATTACK ANIM */
-  @keyframes attackSlide{0%{transform:scaleX(-1) translateX(0);}50%{transform:scaleX(-1) translateX(60px);}100%{transform:scaleX(-1) translateX(0);}}
-  @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);}};
-  @keyframes flash{0%,100%{opacity:1;}50%{opacity:0.2;}}
-  @keyframes catchAnim{0%{transform:scale(1);}30%{transform:scale(0.1);}60%{transform:scale(0.1);}100%{transform:scale(0)}}
-  @keyframes ballWobble{0%,100%{transform:rotate(0deg);}25%{transform:rotate(15deg);}75%{transform:rotate(-15deg);}}
+/* HUD */
+.battle-hud{width:100%;max-width:360px;margin-bottom:6px;}
+.hud-row{display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;}
+.hud-bar{height:7px;background:#2a2d3a;border-radius:4px;overflow:hidden;}
+.hud-fill{height:100%;border-radius:4px;transition:width .4s;}
+.hud-fill.green{background:#1D9E75;}
+.hud-fill.yellow{background:#EF9F27;}
+.hud-fill.red{background:#e24b4a;}
  
-  .anim-attack{animation:attackSlide .4s ease;}
-  .anim-shake{animation:shake .3s ease;}
-  .anim-flash{animation:flash .4s ease 3;}
+/* BATTLE LOG */
+#battle-log{width:100%;max-width:360px;background:#0008;border-radius:10px;padding:9px 12px;font-size:13px;color:#ddd;min-height:40px;margin-bottom:10px;border:1px solid #ffffff11;flex-shrink:0;}
  
-  /* CAUGHT POPUP */
-  #caught-popup{position:absolute;inset:0;z-index:60;background:#000c;display:flex;flex-direction:column;align-items:center;justify-content:center;}
-  #caught-popup.hidden{display:none;}
-  #caught-popup h2{font-size:26px;font-weight:800;color:#FFD700;margin-bottom:8px;}
-  #caught-popup img{width:120px;height:120px;image-rendering:pixelated;margin-bottom:12px;}
-  #caught-popup p{font-size:14px;color:#aaa;margin-bottom:20px;}
-  #caught-popup button{background:#1D9E75;color:#fff;border:none;padding:12px 32px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;}
+/* BATTLE BTNS */
+#battle-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;max-width:360px;flex-shrink:0;}
+#battle-btns button{padding:11px;border-radius:12px;border:none;font-size:13px;font-weight:600;cursor:pointer;}
+#btn-attack{background:#e24b4a;color:#fff;}
+#btn-catch{background:#FFD700;color:#000;}
+#btn-run{background:#2a2d3a;color:#aaa;}
+#btn-swap{background:#1a3a8f;color:#fff;}
  
-  /* NODE TOAST */
-  #node-toast{position:absolute;top:70px;left:50%;transform:translateX(-50%);background:#1D9E7599;border:1px solid #1D9E75;padding:8px 16px;border-radius:20px;font-size:13px;font-weight:600;z-index:30;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;}
-  #node-toast.show{opacity:1;}
+/* ── CAUGHT POPUP ── */
+#caught-popup{position:absolute;inset:0;z-index:160;background:#000d;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;}
+#caught-popup.hidden{display:none;}
+#caught-popup h2{font-size:24px;font-weight:800;color:#FFD700;margin-bottom:8px;}
+#caught-popup img{width:110px;height:110px;image-rendering:pixelated;margin-bottom:10px;}
+#caught-popup p{font-size:13px;color:#aaa;margin-bottom:18px;text-align:center;}
+#caught-popup button{background:#1D9E75;color:#fff;border:none;padding:12px 32px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;}
  
-  .leaflet-container{background:#1a1a2e;}
+/* ── FAINT SCREEN ── */
+#faint-screen{position:absolute;inset:0;z-index:170;background:#000e;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+#faint-screen.hidden{display:none;}
+#faint-screen h2{font-size:22px;font-weight:800;color:#e24b4a;margin-bottom:10px;}
+#faint-screen p{font-size:13px;color:#aaa;margin-bottom:20px;}
+#faint-timer{font-size:48px;font-weight:800;color:#FFD700;}
+#faint-sub{font-size:12px;color:#888;margin-top:6px;}
+ 
+/* ANIMS */
+@keyframes attackSlide{0%{transform:scaleX(-1) translateX(0);}50%{transform:scaleX(-1) translateX(55px);}100%{transform:scaleX(-1) translateX(0);}}
+@keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);}}
+@keyframes flash{0%,100%{opacity:1;}50%{opacity:.15;}}
+@keyframes catchAnim{0%{transform:scale(1);}40%{transform:scale(0.1);}100%{transform:scale(0);}}
+.anim-attack{animation:attackSlide .4s ease;}
+.anim-shake{animation:shake .3s ease;}
+.anim-flash{animation:flash .35s ease 3;}
 </style>
 </head>
 <body>
  
-<!-- STARTER SELECTION -->
-<div id="starter-screen" class="screen">
+<!-- STARTER -->
+<div id="starter-screen">
   <h1>⚡ PokéMesh</h1>
-  <p>Choose your starter Pokémon to begin your journey</p>
+  <p>Choose your starter — each has an 8% shiny chance</p>
   <div class="starter-grid" id="starter-grid"></div>
 </div>
  
-<!-- MAIN MAP -->
-<div id="game-screen" class="screen hidden" style="z-index:1;position:absolute;inset:0;">
-  <div id="map"></div>
-  <div id="map-ui">
+<!-- MAIN GAME -->
+<div id="game-screen" class="hidden">
+ 
+  <!-- TOP 2/3 -->
+  <div id="top-panel">
     <div id="topbar">
       <span class="logo">⚡ PokéMesh</span>
-      <button id="ble-btn">Connect BLE</button>
+      <button id="ble-btn">🔵 Connect BLE</button>
     </div>
-    <div id="node-toast">📡 New node detected!</div>
-    <div id="party-bar"></div>
-    <div id="bottombar">
-      <button id="btn-scan">📡 Request Nodes</button>
-      <button id="btn-drain">⬇ Drain Buffer</button>
+    <div id="main-area">
+      <div id="party-grid"></div>
+      <div id="info-row">
+        <div id="node-count"><span id="node-num">0</span>Nodes Seen</div>
+        <div id="gps-box" id="gps-box">📍 <span id="gps-text">Getting GPS...</span></div>
+      </div>
+      <div id="action-row">
+        <button id="btn-scan">📡 Request Nodes</button>
+        <button id="btn-drain">⬇ Drain Buffer</button>
+      </div>
     </div>
   </div>
-</div>
  
-<!-- ENCOUNTER -->
-<div id="encounter" class="hidden">
-  <div id="enc-title">A wild Pokémon appeared!</div>
-  <div id="enc-name"></div>
-  <div id="enc-meta"></div>
- 
-  <div class="battle-hud">
-    <div class="hud-row"><span id="wild-label">Wild</span><span id="wild-hp-text">HP</span></div>
-    <div class="hud-bar"><div class="hud-fill green" id="wild-hp-fill" style="width:100%"></div></div>
+  <!-- BOTTOM 1/3 MAP -->
+  <div id="map-panel">
+    <div id="map"></div>
+    <div id="node-toast">📡 New node!</div>
   </div>
  
-  <div id="battle-scene">
-    <div id="wild-platform"><img id="wild-sprite" src="" alt="wild"/></div>
-    <div id="player-platform"><img id="player-battle-sprite" src="" alt="player"/></div>
+  <!-- ENCOUNTER -->
+  <div id="encounter" class="hidden">
+    <div id="enc-title">A wild Pokémon appeared!</div>
+    <div id="enc-name"></div>
+    <div id="enc-meta"></div>
+    <div class="battle-hud">
+      <div class="hud-row"><span id="wild-label">Wild</span><span id="wild-hp-text"></span></div>
+      <div class="hud-bar"><div class="hud-fill green" id="wild-hp-fill" style="width:100%"></div></div>
+    </div>
+    <div id="battle-scene">
+      <div id="wild-platform"><img id="wild-sprite" src="" alt="wild"/></div>
+      <div id="player-platform"><img id="player-battle-sprite" src="" alt="player"/></div>
+    </div>
+    <div class="battle-hud">
+      <div class="hud-row"><span id="player-label">Your Pokémon</span><span id="player-hp-text"></span></div>
+      <div class="hud-bar"><div class="hud-fill green" id="player-hp-fill" style="width:100%"></div></div>
+    </div>
+    <div id="battle-log">What will you do?</div>
+    <div id="battle-btns">
+      <button id="btn-attack">⚔️ Attack</button>
+      <button id="btn-catch">🟡 Throw Ball</button>
+      <button id="btn-run">🏃 Run</button>
+      <button id="btn-swap">🔄 Swap</button>
+    </div>
   </div>
  
-  <div class="battle-hud">
-    <div class="hud-row"><span id="player-label">Your Pokémon</span><span id="player-hp-text">HP</span></div>
-    <div class="hud-bar"><div class="hud-fill green" id="player-hp-fill" style="width:100%"></div></div>
+  <!-- CAUGHT -->
+  <div id="caught-popup" class="hidden">
+    <h2>Gotcha! 🎉</h2>
+    <img id="caught-img" src="" alt="caught"/>
+    <p id="caught-msg"></p>
+    <button id="caught-ok">Continue</button>
   </div>
  
-  <div id="battle-log">A wild Pokémon appeared! What will you do?</div>
- 
-  <div id="battle-btns">
-    <button id="btn-attack">⚔️ Attack</button>
-    <button id="btn-catch">🟡 Throw Ball</button>
-    <button id="btn-run">🏃 Run</button>
-    <button id="btn-swap">🔄 Swap</button>
+  <!-- FAINT COUNTDOWN -->
+  <div id="faint-screen" class="hidden">
+    <h2>💀 All Pokémon Fainted!</h2>
+    <p>Your team is recovering...</p>
+    <div id="faint-timer">60</div>
+    <div id="faint-sub">seconds until full heal</div>
   </div>
-</div>
  
-<!-- CAUGHT POPUP -->
-<div id="caught-popup" class="hidden">
-  <h2>Gotcha! 🎉</h2>
-  <img id="caught-img" src="" alt="caught"/>
-  <p id="caught-msg"></p>
-  <button id="caught-ok">Continue</button>
 </div>
  
 <script>
-// ─── CONFIG ───────────────────────────────────────────────
-const BATTLE_COOLDOWN_MS = 150000; // 2.5 min
+// ── CONFIG ──────────────────────────────────────────────
+const BATTLE_COOLDOWN_MS = 150000;
 const LANDMARK_RADIUS_M  = 150;
-const CATCH_BASE_RATE    = 0.65;   // much better catch rate
-const SHINY_CHANCE       = 0.20;
+const CATCH_BASE_RATE    = 0.65;
+const SHINY_CHANCE       = 0.08;
+const FAINT_RECOVER_SECS = 60;
  
 const LANDMARKS = [
-  { name:'Space Needle', lat:47.6205, lng:-122.3493, special:'haunter' },
-  { name:'Local 418',    lat:47.6062, lng:-122.3321, special:'machamp' },
+  { name:'Space Needle', lat:47.6205, lng:-122.3493, special:93 },  // Haunter
+  { name:'Local 418',   lat:47.6237, lng:-122.3246, special:122 }, // Mr. Mime
 ];
  
 const STARTERS = [
-  { id:1,  name:'Bulbasaur',  type:'Grass/Poison' },
-  { id:4,  name:'Charmander', type:'Fire' },
-  { id:7,  name:'Squirtle',   type:'Water' },
-  { id:25, name:'Pikachu',    type:'Electric' },
-  { id:133,name:'Eevee',      type:'Normal' },
-  { id:122,name:'Mr. Mime',   type:'Psychic/Fairy' },
+  {id:1,  name:'Bulbasaur',  type:'Grass/Poison'},
+  {id:4,  name:'Charmander', type:'Fire'},
+  {id:7,  name:'Squirtle',   type:'Water'},
+  {id:25, name:'Pikachu',    type:'Electric'},
+  {id:133,name:'Eevee',      type:'Normal'},
+  {id:122,name:'Mr. Mime',   type:'Psychic/Fairy'},
 ];
  
-// Common pool for random encounters
-const COMMON_POOL  = [16,17,19,20,21,23,27,29,32,41,43,46,48,52,54,56,58,60,63,66,69,72,74,77,79,81,84,86,88,90,92,96,98,100,102,104,106,107,108,109,111,113,114,116,118,120,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,140,142,143,147];
-const UNCOMMON_POOL= [haunter=93,kadabra=64,machoke=67,graveler=75,slowbro=80,magneton=82,dodrio=85,dewgong=87,muk=89,cloyster=91,gengar=94,onix=95,hypno=97,kingler=99,electrode=101,exeggutor=103,marowak=105,hitmonchan=107,hitmonlee=106,lickitung=108,koffing=109,rhydon=112,chansey=113,tangela=114,kangaskhan=115,seadra=117,goldeen=118,staryu=120,tauros=128,gyarados=130,lapras=131,ditto=132,vaporeon=134,jolteon=135,flareon=136,omastar=139,kabutops=141,aerodactyl=142,snorlax=143,dragonair=148];
+const COMMON   = [16,19,21,23,27,29,32,41,43,46,48,52,54,56,58,60,63,66,69,72,74,77,79,81,84,86,88,90,96,98,100,102,104,109,111,116,118,120,129,147];
+const UNCOMMON = [64,67,75,80,82,85,87,89,91,93,94,95,97,99,101,103,105,106,107,108,112,113,114,115,117,119,121,128,130,131,132,134,135,136,138,139,140,141,142,143,148];
  
-// ─── STATE ────────────────────────────────────────────────
-let playerParty = [];
-let activeSlot  = 0;
-let caughtList  = [];
-let knownNodes  = {};
-let playerPos   = null;
-let map, playerMarker;
-let lastBattleTime = 0;
-let inBattle    = false;
-let wildMon     = null;
-let wildHP      = 0, wildMaxHP = 0;
-let playerHP    = 0, playerMaxHP = 0;
-let bleConnected= false;
-let device, server, fromRadioChar, fromNumChar, toRadioChar;
-const sleep = ms => new Promise(r=>setTimeout(r,ms));
+// ── STATE ────────────────────────────────────────────────
+let playerParty=[], activeSlot=0, caughtList=[], knownNodes={};
+let playerPos=null, map, playerMarker;
+let lastBattleTime=0, inBattle=false;
+let wildMon=null, wildHP=0, wildMaxHP=0, playerHP=0, playerMaxHP=0;
+let bleConnected=false, device, server, fromRadioChar, fromNumChar, toRadioChar;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
  
-// ─── SPRITE URLS ─────────────────────────────────────────
-const spriteUrl      = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
-const shinySpriteUrl = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${id}.png`;
-const backSpriteUrl  = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${id}.png`;
-// Gen 5 animated trainer sprite (high quality)
-const TRAINER_SPRITE = 'https://archives.bulbagarden.net/media/upload/8/8a/Spr_B2W2_Hilbert.png';
+// ── SPRITES ─────────────────────────────────────────────
+const spriteUrl =id=>`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
+const shinyUrl  =id=>`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${id}.png`;
+const backUrl   =id=>`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${id}.png`;
+// Gen 5 BW2 male protagonist — high quality
+const TRAINER_BACK = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/25.png'; // fallback
  
-// ─── STARTER SCREEN ───────────────────────────────────────
-const grid = document.getElementById('starter-grid');
-STARTERS.forEach(s => {
-  const isShiny = Math.random() < SHINY_CHANCE;
-  const url = isShiny ? shinySpriteUrl(s.id) : spriteUrl(s.id);
-  const card = document.createElement('div');
-  card.className = 'starter-card';
-  card.innerHTML = `
-    <img src="${url}" alt="${s.name}"/>
-    <div class="name">${s.name}</div>
-    <div class="type">${s.type}</div>
-    ${isShiny ? '<span class="shiny-badge">✨ SHINY</span>' : ''}
-  `;
-  card.onclick = () => pickStarter(s, isShiny);
+// ── STARTER SCREEN ───────────────────────────────────────
+const grid=document.getElementById('starter-grid');
+STARTERS.forEach(s=>{
+  const isShiny=Math.random()<SHINY_CHANCE;
+  const url=isShiny?shinyUrl(s.id):spriteUrl(s.id);
+  const card=document.createElement('div');
+  card.className='starter-card';
+  card.innerHTML=`<img src="${url}" alt="${s.name}"/><div class="sname">${s.name}</div><div class="stype">${s.type}</div>${isShiny?'<span class="shiny-badge">✨ SHINY</span>':''}`;
+  card.onclick=()=>pickStarter(s,isShiny);
   grid.appendChild(card);
 });
  
-function pickStarter(s, isShiny) {
-  const mon = makeMon(s.id, s.name, isShiny, true);
-  playerParty = [mon];
+function pickStarter(s,isShiny){
+  const mon=makeMon(s.id,s.name,isShiny,true);
+  playerParty=[mon];
   document.getElementById('starter-screen').classList.add('hidden');
   document.getElementById('game-screen').classList.remove('hidden');
   initMap();
@@ -251,398 +271,353 @@ function pickStarter(s, isShiny) {
   renderParty();
 }
  
-// ─── MON FACTORY ─────────────────────────────────────────
-function makeMon(id, name, isShiny, isStarter) {
-  const level = isStarter ? 5 : Math.floor(Math.random()*15)+3;
-  const maxHP  = 20 + level*3;
-  return { id, name, isShiny, level, hp:maxHP, maxHP, sprite: isShiny ? shinySpriteUrl(id) : spriteUrl(id), back: backSpriteUrl(id) };
+// ── MON FACTORY ─────────────────────────────────────────
+function makeMon(id,name,isShiny,isStarter){
+  const level=isStarter?5:Math.floor(Math.random()*15)+3;
+  const maxHP=20+level*3;
+  return {id,name,isShiny,level,hp:maxHP,maxHP,
+    sprite:isShiny?shinyUrl(id):spriteUrl(id),
+    back:backUrl(id)};
 }
  
-function randomMon(forceId) {
-  const isShiny = Math.random() < 0.05;
-  const pool = forceId ? [{id:forceId}] : (Math.random()<0.25 ? UNCOMMON_POOL : COMMON_POOL);
-  const id   = forceId || pool[Math.floor(Math.random()*pool.length)];
-  return fetch(`https://pokeapi.co/api/v2/pokemon/${id}`)
-    .then(r=>r.json())
-    .then(data => {
-      const name = data.name.charAt(0).toUpperCase()+data.name.slice(1);
-      return makeMon(id, name, isShiny, false);
-    })
-    .catch(()=> makeMon(id,'Pokémon',isShiny,false));
+async function randomMon(forceId){
+  const isShiny=Math.random()<0.05;
+  const pool=forceId?null:(Math.random()<0.25?UNCOMMON:COMMON);
+  const id=forceId||(pool[Math.floor(Math.random()*pool.length)]);
+  try{
+    const data=await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`).then(r=>r.json());
+    const name=data.name.charAt(0).toUpperCase()+data.name.slice(1);
+    return makeMon(id,name,isShiny,false);
+  }catch(e){return makeMon(id,'Pokémon',isShiny,false);}
 }
  
-// ─── MAP ─────────────────────────────────────────────────
-function initMap() {
-  map = L.map('map',{zoomControl:false,attributionControl:false}).setView([47.6062,-122.3321],15);
+// ── MAP ──────────────────────────────────────────────────
+function initMap(){
+  map=L.map('map',{zoomControl:false,attributionControl:false}).setView([47.6205,-122.3493],14);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
- 
-  // Landmark markers
-  LANDMARKS.forEach(lm => {
+  LANDMARKS.forEach(lm=>{
     L.marker([lm.lat,lm.lng],{
-      icon:L.divIcon({className:'',html:`<div style="background:#FFD700;color:#000;font-size:11px;font-weight:700;padding:4px 8px;border-radius:20px;white-space:nowrap;box-shadow:0 2px 8px #0008">⭐ ${lm.name}</div>`,iconAnchor:[40,12]})
+      icon:L.divIcon({className:'',html:`<div style="background:#FFD700;color:#000;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;box-shadow:0 2px 6px #0008">⭐ ${lm.name}</div>`,iconAnchor:[40,10]})
     }).addTo(map);
   });
 }
  
-function initGPS() {
-  if (!navigator.geolocation) return;
-  navigator.geolocation.watchPosition(pos => {
-    const {latitude:lat, longitude:lng} = pos.coords;
-    playerPos = {lat,lng};
-    if (!playerMarker) {
-      playerMarker = L.marker([lat,lng],{
-        icon: L.divIcon({className:'',html:`<img src="${playerParty[activeSlot]?.sprite||''}" style="width:36px;height:36px;image-rendering:pixelated;transform:scaleX(-1);filter:drop-shadow(0 2px 6px #0008)"/>`,iconAnchor:[18,36]})
-      }).addTo(map);
-      map.setView([lat,lng],16);
-    } else {
-      playerMarker.setLatLng([lat,lng]);
-      updateMarkerSprite();
-    }
+function updateMapMarker(){
+  if(!playerPos||!playerParty[activeSlot]) return;
+  const sprite=playerParty[activeSlot].sprite;
+  const icon=L.divIcon({className:'',html:`<img src="${sprite}" style="width:32px;height:32px;image-rendering:pixelated;transform:scaleX(-1);filter:drop-shadow(0 2px 6px #0008)"/>`,iconAnchor:[16,32]});
+  if(!playerMarker){
+    playerMarker=L.marker([playerPos.lat,playerPos.lng],{icon}).addTo(map);
+    map.setView([playerPos.lat,playerPos.lng],16);
+  } else {
+    playerMarker.setLatLng([playerPos.lat,playerPos.lng]);
+    playerMarker.setIcon(icon);
+  }
+}
+ 
+// ── GPS ──────────────────────────────────────────────────
+function initGPS(){
+  if(!navigator.geolocation){document.getElementById('gps-text').textContent='Not available';return;}
+  navigator.geolocation.watchPosition(pos=>{
+    const {latitude:lat,longitude:lng,accuracy}=pos.coords;
+    playerPos={lat,lng};
+    document.getElementById('gps-text').textContent=`${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    updateMapMarker();
     checkLandmarks(lat,lng);
     maybeSpawnEncounter();
-  },{enableHighAccuracy:true,maximumAge:5000});
+  },{enableHighAccuracy:true,maximumAge:5000,timeout:15000},
+  ()=>document.getElementById('gps-text').textContent='GPS error');
 }
  
-function updateMarkerSprite() {
-  if (!playerMarker || !playerParty[activeSlot]) return;
-  playerMarker.setIcon(L.divIcon({className:'',html:`<img src="${playerParty[activeSlot].sprite}" style="width:36px;height:36px;image-rendering:pixelated;transform:scaleX(-1);filter:drop-shadow(0 2px 6px #0008)"/>`,iconAnchor:[18,36]}));
-}
- 
-// ─── DISTANCE ────────────────────────────────────────────
-function distM(lat1,lng1,lat2,lng2) {
-  const R=6371000, dLat=(lat2-lat1)*Math.PI/180, dLng=(lng2-lng1)*Math.PI/180;
-  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+// ── LANDMARKS ────────────────────────────────────────────
+function distM(la1,ln1,la2,ln2){
+  const R=6371000,dL=(la2-la1)*Math.PI/180,dG=(ln2-ln1)*Math.PI/180;
+  const a=Math.sin(dL/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dG/2)**2;
   return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
  
-function checkLandmarks(lat,lng) {
-  LANDMARKS.forEach(lm => {
-    const d = distM(lat,lng,lm.lat,lm.lng);
-    if (d < LANDMARK_RADIUS_M && !lm._triggered) {
-      lm._triggered = true;
-      setTimeout(()=>lm._triggered=false, BATTLE_COOLDOWN_MS*2);
-      showToast(`📍 Near ${lm.name}! Special encounter!`);
-      setTimeout(()=>startEncounter(lm.special),2000);
+function checkLandmarks(lat,lng){
+  LANDMARKS.forEach(lm=>{
+    const d=distM(lat,lng,lm.lat,lm.lng);
+    if(d<LANDMARK_RADIUS_M){
+      // Heal party at landmark
+      playerParty.forEach(m=>m.hp=m.maxHP);
+      renderParty();
+      if(!lm._triggered){
+        lm._triggered=true;
+        setTimeout(()=>lm._triggered=false,BATTLE_COOLDOWN_MS*2);
+        showToast(`⭐ ${lm.name} — Special spawn!`);
+        setTimeout(()=>startEncounter(lm.special),2500);
+      }
     }
   });
 }
  
-// ─── SPAWN LOGIC ─────────────────────────────────────────
-function maybeSpawnEncounter(forceId) {
-  if (inBattle) return;
-  const now = Date.now();
-  if (!forceId && now - lastBattleTime < BATTLE_COOLDOWN_MS) return;
-  lastBattleTime = now;
+// ── SPAWN ────────────────────────────────────────────────
+function maybeSpawnEncounter(forceId){
+  if(inBattle) return;
+  const now=Date.now();
+  if(!forceId&&now-lastBattleTime<BATTLE_COOLDOWN_MS) return;
+  lastBattleTime=now;
   startEncounter(forceId||null);
 }
  
-async function startEncounter(forceId) {
-  if (inBattle) return;
-  inBattle = true;
-  wildMon = await randomMon(forceId);
-  wildMaxHP = wildHP = wildMon.maxHP;
+async function startEncounter(forceId){
+  if(inBattle) return;
+  inBattle=true;
+  wildMon=await randomMon(forceId);
+  wildMaxHP=wildHP=wildMon.maxHP;
+  const active=playerParty[activeSlot];
+  playerMaxHP=active.maxHP;
+  playerHP=active.hp;
  
-  const active = playerParty[activeSlot];
-  playerMaxHP = active.maxHP;
-  playerHP    = active.hp; // persists between battles unless healed at landmark
- 
-  document.getElementById('enc-name').textContent = (wildMon.isShiny?'✨ ':'')+wildMon.name;
-  document.getElementById('enc-meta').textContent = `Lv.${wildMon.level} · ${wildMon.isShiny?'Shiny · ':''}Node Signal encounter`;
-  document.getElementById('wild-sprite').src = wildMon.sprite;
-  document.getElementById('wild-sprite').className = wildMon.isShiny ? 'shiny' : '';
-  document.getElementById('player-battle-sprite').src = active.back;
-  document.getElementById('wild-label').textContent  = wildMon.name;
-  document.getElementById('player-label').textContent = active.name;
+  document.getElementById('enc-name').textContent=(wildMon.isShiny?'✨ ':'')+wildMon.name;
+  document.getElementById('enc-meta').textContent=`Lv.${wildMon.level}${wildMon.isShiny?' · Shiny':''}`;
+  document.getElementById('wild-sprite').src=wildMon.sprite;
+  document.getElementById('wild-sprite').className=wildMon.isShiny?'shiny':'';
+  document.getElementById('player-battle-sprite').src=active.back;
+  document.getElementById('wild-label').textContent=wildMon.name;
+  document.getElementById('player-label').textContent=active.name;
   updateHPBars();
-  setBattleLog(`A wild ${wildMon.name} appeared!${wildMon.isShiny?' It\'s shiny!':''} What will you do?`);
+  setBattleLog(`A wild ${wildMon.name} appeared!${wildMon.isShiny?' It\'s shiny!':''}`);
+  disableBtns(false);
   document.getElementById('encounter').classList.remove('hidden');
 }
  
-// ─── BATTLE ──────────────────────────────────────────────
-function updateHPBars() {
-  const wp = Math.max(0,(wildHP/wildMaxHP)*100);
-  const pp = Math.max(0,(playerHP/playerMaxHP)*100);
-  const wf = document.getElementById('wild-hp-fill');
-  const pf = document.getElementById('player-hp-fill');
-  wf.style.width = wp+'%';
-  pf.style.width = pp+'%';
-  wf.className = 'hud-fill '+(wp>50?'green':wp>25?'yellow':'red');
-  pf.className = 'hud-fill '+(pp>50?'green':pp>25?'yellow':'red');
-  document.getElementById('wild-hp-text').textContent  = `${Math.max(0,wildHP)}/${wildMaxHP}`;
-  document.getElementById('player-hp-text').textContent= `${Math.max(0,playerHP)}/${playerMaxHP}`;
+// ── BATTLE ───────────────────────────────────────────────
+function updateHPBars(){
+  const wp=Math.max(0,(wildHP/wildMaxHP)*100);
+  const pp=Math.max(0,(playerHP/playerMaxHP)*100);
+  const wf=document.getElementById('wild-hp-fill');
+  const pf=document.getElementById('player-hp-fill');
+  wf.style.width=wp+'%';pf.style.width=pp+'%';
+  wf.className='hud-fill '+(wp>50?'green':wp>25?'yellow':'red');
+  pf.className='hud-fill '+(pp>50?'green':pp>25?'yellow':'red');
+  document.getElementById('wild-hp-text').textContent=`${Math.max(0,wildHP)}/${wildMaxHP}`;
+  document.getElementById('player-hp-text').textContent=`${Math.max(0,playerHP)}/${playerMaxHP}`;
 }
  
-function setBattleLog(msg) { document.getElementById('battle-log').textContent = msg; }
+function setBattleLog(msg){document.getElementById('battle-log').textContent=msg;}
+function disableBtns(d){['btn-attack','btn-catch','btn-run','btn-swap'].forEach(id=>document.getElementById(id).disabled=d);}
  
-function disableBtns(d) {
-  ['btn-attack','btn-catch','btn-run','btn-swap'].forEach(id=>document.getElementById(id).disabled=d);
-}
- 
-async function doAttack() {
+async function doAttack(){
   disableBtns(true);
-  const active = playerParty[activeSlot];
-  const dmg = Math.floor(Math.random()*8)+3+Math.floor(active.level/2);
-  // player attack anim
-  const ps = document.getElementById('player-battle-sprite');
-  ps.classList.add('anim-attack');
-  await sleep(400);
-  ps.classList.remove('anim-attack');
-  // wild shake
-  const ws = document.getElementById('wild-sprite');
+  const active=playerParty[activeSlot];
+  const dmg=Math.floor(Math.random()*8)+3+Math.floor(active.level/2);
+  const ps=document.getElementById('player-battle-sprite');
+  ps.classList.add('anim-attack'); await sleep(420); ps.classList.remove('anim-attack');
+  const ws=document.getElementById('wild-sprite');
   ws.classList.add('anim-shake');
-  wildHP = Math.max(0, wildHP-dmg);
-  updateHPBars();
-  setBattleLog(`${active.name} attacked! Dealt ${dmg} damage.`);
-  await sleep(300);
-  ws.classList.remove('anim-shake');
- 
-  if (wildHP <= 0) { await endBattle('faint'); return; }
- 
-  // Wild counter
+  wildHP=Math.max(0,wildHP-dmg); updateHPBars();
+  setBattleLog(`${active.name} attacked for ${dmg} damage!`);
+  await sleep(320); ws.classList.remove('anim-shake');
+  if(wildHP<=0){await endBattle('faint');return;}
   await sleep(400);
-  const wdmg = Math.floor(Math.random()*6)+2;
-  ws.classList.add('anim-attack');
-  await sleep(300);
-  ws.classList.remove('anim-attack');
+  const wdmg=Math.floor(Math.random()*6)+2;
+  ws.classList.add('anim-attack'); await sleep(300); ws.classList.remove('anim-attack');
   ps.classList.add('anim-shake');
-  playerHP = Math.max(0, playerHP-wdmg);
-  active.hp = playerHP;
-  updateHPBars();
-  setBattleLog(`Wild ${wildMon.name} struck back for ${wdmg} damage!`);
-  await sleep(300);
-  ps.classList.remove('anim-shake');
- 
-  if (playerHP <= 0) { await endBattle('fainted'); return; }
+  playerHP=Math.max(0,playerHP-wdmg); active.hp=playerHP; updateHPBars();
+  setBattleLog(`${wildMon.name} struck back for ${wdmg}!`);
+  await sleep(320); ps.classList.remove('anim-shake');
+  if(playerHP<=0){await endBattle('fainted');return;}
   disableBtns(false);
 }
  
-async function doThrowBall() {
+async function doThrowBall(){
   disableBtns(true);
   setBattleLog('You threw a Poké Ball!');
-  // ball wobble on wild sprite
-  const ws = document.getElementById('wild-sprite');
-  ws.classList.add('anim-flash');
-  await sleep(1200);
-  ws.classList.remove('anim-flash');
- 
-  const hpBonus  = 1 - (wildHP/wildMaxHP)*0.3;
-  const catchRate = Math.min(0.95, CATCH_BASE_RATE * hpBonus);
-  const caught    = Math.random() < catchRate;
- 
-  if (caught) {
-    ws.style.animation = 'catchAnim .6s ease forwards';
+  const ws=document.getElementById('wild-sprite');
+  ws.classList.add('anim-flash'); await sleep(1300); ws.classList.remove('anim-flash');
+  const hpBonus=1-(wildHP/wildMaxHP)*0.3;
+  const rate=Math.min(0.95,CATCH_BASE_RATE*hpBonus);
+  if(Math.random()<rate){
+    ws.style.animation='catchAnim .6s ease forwards';
     await sleep(700);
     await endBattle('caught');
   } else {
-    setBattleLog(`Oh no! ${wildMon.name} broke free!`);
-    await sleep(800);
-    // Wild attacks after breakout
-    const wdmg = Math.floor(Math.random()*5)+2;
-    const active = playerParty[activeSlot];
-    playerHP = Math.max(0, playerHP-wdmg);
-    active.hp = playerHP;
-    updateHPBars();
-    setBattleLog(`Wild ${wildMon.name} is angry and attacked for ${wdmg}!`);
+    setBattleLog(`${wildMon.name} broke free!`);
+    await sleep(700);
+    const wdmg=Math.floor(Math.random()*5)+2;
+    const active=playerParty[activeSlot];
+    playerHP=Math.max(0,playerHP-wdmg); active.hp=playerHP; updateHPBars();
+    setBattleLog(`${wildMon.name} is angry! Hit for ${wdmg}!`);
     await sleep(500);
-    if (playerHP <= 0) { await endBattle('fainted'); return; }
+    if(playerHP<=0){await endBattle('fainted');return;}
     disableBtns(false);
   }
 }
  
-async function doRun() {
-  setBattleLog('Got away safely!');
-  await sleep(800);
-  closeBattle();
+async function doRun(){
+  setBattleLog('Got away safely!'); await sleep(700); closeBattle();
 }
  
-async function endBattle(result) {
-  if (result === 'caught') {
+async function endBattle(result){
+  if(result==='caught'){
     caughtList.push(wildMon);
-    if (playerParty.length < 6) playerParty.push({...wildMon, hp:wildMon.maxHP});
+    if(playerParty.length<6) playerParty.push({...wildMon,hp:wildMon.maxHP});
     document.getElementById('encounter').classList.add('hidden');
-    document.getElementById('caught-img').src = wildMon.sprite;
-    document.getElementById('caught-msg').textContent = `${wildMon.name} was added to your party!${wildMon.isShiny?' ✨ Shiny!':''}`;
+    document.getElementById('caught-img').src=wildMon.sprite;
+    document.getElementById('caught-msg').textContent=`${wildMon.name} was added to your party!${wildMon.isShiny?' ✨ Shiny!':''}`;
     document.getElementById('caught-popup').classList.remove('hidden');
     renderParty();
-  } else if (result === 'faint') {
-    setBattleLog(`Wild ${wildMon.name} fainted!`);
-    await sleep(1200);
-    closeBattle();
-  } else if (result === 'fainted') {
-    setBattleLog(`${playerParty[activeSlot].name} fainted!`);
-    await sleep(1000);
-    // Try next party member
-    let next = playerParty.findIndex((m,i)=>i>activeSlot&&m.hp>0);
-    if (next === -1) next = playerParty.findIndex((m,i)=>i!==activeSlot&&m.hp>0);
-    if (next !== -1) {
-      activeSlot = next;
-      setBattleLog(`Go, ${playerParty[activeSlot].name}!`);
-      document.getElementById('player-battle-sprite').src = playerParty[activeSlot].back;
-      playerHP = playerParty[activeSlot].hp;
-      playerMaxHP = playerParty[activeSlot].maxHP;
+  } else if(result==='faint'){
+    setBattleLog(`Wild ${wildMon.name} fainted!`); await sleep(1000); closeBattle();
+  } else if(result==='fainted'){
+    setBattleLog(`${playerParty[activeSlot].name} fainted!`); await sleep(900);
+    let next=playerParty.findIndex((m,i)=>i!==activeSlot&&m.hp>0);
+    if(next!==-1){
+      activeSlot=next;
+      const a=playerParty[activeSlot];
+      playerHP=a.hp; playerMaxHP=a.maxHP;
+      document.getElementById('player-battle-sprite').src=a.back;
+      document.getElementById('player-label').textContent=a.name;
       updateHPBars();
-      await sleep(800);
+      setBattleLog(`Go, ${a.name}!`); await sleep(700);
       disableBtns(false);
     } else {
-      setBattleLog('All your Pokémon fainted! Returning to map...');
-      // Heal all to full
-      playerParty.forEach(m=>m.hp=m.maxHP);
-      await sleep(1500);
-      closeBattle();
+      setBattleLog('All Pokémon fainted!'); await sleep(1000);
+      document.getElementById('encounter').classList.add('hidden');
+      inBattle=false;
+      showFaintScreen();
     }
   }
 }
  
-function closeBattle() {
+function closeBattle(){
   document.getElementById('encounter').classList.add('hidden');
-  inBattle = false;
-  lastBattleTime = Date.now();
-  renderParty();
-  updateMarkerSprite();
+  document.getElementById('wild-sprite').style.animation='';
+  inBattle=false; lastBattleTime=Date.now();
+  renderParty(); updateMapMarker();
 }
  
-// ─── PARTY UI ────────────────────────────────────────────
-function renderParty() {
-  const bar = document.getElementById('party-bar');
-  bar.innerHTML = '';
-  playerParty.forEach((mon,i) => {
-    const slot = document.createElement('div');
-    slot.className = 'party-slot'+(i===activeSlot?' active':'');
-    const pct = (mon.hp/mon.maxHP)*100;
-    slot.innerHTML = `<img src="${mon.sprite}" alt="${mon.name}"/><div class="hp-bar"><div class="hp-fill" style="width:${pct}%;background:${pct>50?'#1D9E75':pct>25?'#EF9F27':'#e24b4a'}"></div></div>`;
-    slot.onclick = ()=>{ activeSlot=i; renderParty(); updateMarkerSprite(); };
-    bar.appendChild(slot);
+// ── FAINT COUNTDOWN ──────────────────────────────────────
+function showFaintScreen(){
+  const screen=document.getElementById('faint-screen');
+  const timerEl=document.getElementById('faint-timer');
+  screen.classList.remove('hidden');
+  let secs=FAINT_RECOVER_SECS;
+  timerEl.textContent=secs;
+  const iv=setInterval(()=>{
+    secs--;
+    timerEl.textContent=secs;
+    if(secs<=0){
+      clearInterval(iv);
+      playerParty.forEach(m=>m.hp=m.maxHP);
+      activeSlot=0;
+      screen.classList.add('hidden');
+      lastBattleTime=Date.now();
+      renderParty(); updateMapMarker();
+    }
+  },1000);
+}
+ 
+// ── PARTY UI ────────────────────────────────────────────
+function renderParty(){
+  const g=document.getElementById('party-grid');
+  g.innerHTML='';
+  playerParty.forEach((mon,i)=>{
+    const pct=(mon.hp/mon.maxHP)*100;
+    const card=document.createElement('div');
+    card.className='party-card'+(i===activeSlot?' active':'')+(mon.hp<=0?' fainted':'');
+    card.innerHTML=`<img src="${mon.sprite}" alt="${mon.name}"/><div class="pname">${mon.isShiny?'✨ ':''}${mon.name}</div><div class="hp-bar"><div class="hp-fill" style="width:${pct}%;background:${pct>50?'#1D9E75':pct>25?'#EF9F27':'#e24b4a'}"></div></div>`;
+    card.onclick=()=>{if(mon.hp>0){activeSlot=i;renderParty();updateMapMarker();}};
+    g.appendChild(card);
   });
 }
  
-// ─── NODE TOAST ──────────────────────────────────────────
-function showToast(msg) {
-  const t = document.getElementById('node-toast');
-  t.textContent = msg;
-  t.classList.add('show');
+// ── TOAST ────────────────────────────────────────────────
+function showToast(msg){
+  const t=document.getElementById('node-toast');
+  t.textContent=msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),3000);
 }
  
-// ─── BLE ─────────────────────────────────────────────────
-const MESHTASTIC_SERVICE = '6ba1b218-15a8-461f-9fa8-5dcae273eafd';
-const FROMRADIO_CHAR     = '2c55e69e-4993-11ed-b878-0242ac120002';
-const FROMNUM_CHAR       = 'ed9da18c-a800-4f66-a670-aa7547e34453';
-const TORADIO_CHAR_UUID  = 'f75c76d2-129e-4dad-a1dd-7866124401e7';
+// ── BLE ──────────────────────────────────────────────────
+const MESH_SVC  ='6ba1b218-15a8-461f-9fa8-5dcae273eafd';
+const FROM_CHAR ='2c55e69e-4993-11ed-b878-0242ac120002';
+const FNUM_CHAR ='ed9da18c-a800-4f66-a670-aa7547e34453';
+const TO_CHAR   ='f75c76d2-129e-4dad-a1dd-7866124401e7';
  
-async function connectBLE() {
-  const btn = document.getElementById('ble-btn');
-  try {
-    btn.textContent = 'Connecting...';
-    device = await navigator.bluetooth.requestDevice({
-      filters:[{services:[MESHTASTIC_SERVICE]}],
-      optionalServices:[MESHTASTIC_SERVICE]
-    }).catch(()=>navigator.bluetooth.requestDevice({
-      acceptAllDevices:true,
-      optionalServices:[MESHTASTIC_SERVICE]
-    }));
-    server = await device.gatt.connect();
-    await sleep(600);
-    const svc = await server.getPrimaryService(MESHTASTIC_SERVICE);
-    fromRadioChar = await svc.getCharacteristic(FROMRADIO_CHAR);
-    fromNumChar   = await svc.getCharacteristic(FROMNUM_CHAR);
-    toRadioChar   = await svc.getCharacteristic(TORADIO_CHAR_UUID);
+async function connectBLE(){
+  const btn=document.getElementById('ble-btn');
+  btn.textContent='Connecting...'; btn.disabled=true;
+  try{
+    device=await navigator.bluetooth.requestDevice({filters:[{services:[MESH_SVC]}],optionalServices:[MESH_SVC]})
+      .catch(()=>navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[MESH_SVC]}));
+    server=await device.gatt.connect(); await sleep(600);
+    const svc=await server.getPrimaryService(MESH_SVC);
+    fromRadioChar=await svc.getCharacteristic(FROM_CHAR);
+    fromNumChar  =await svc.getCharacteristic(FNUM_CHAR);
+    toRadioChar  =await svc.getCharacteristic(TO_CHAR);
     await fromNumChar.startNotifications();
-    fromNumChar.addEventListener('characteristicvaluechanged', onPacket);
-    bleConnected = true;
-    btn.textContent = '🔵 Connected';
-    btn.classList.add('connected');
+    fromNumChar.addEventListener('characteristicvaluechanged',onPacket);
+    bleConnected=true;
+    btn.textContent='🔵 Connected'; btn.classList.add('connected'); btn.disabled=false;
     showToast('📡 Meshtastic connected!');
     device.addEventListener('gattserverdisconnected',()=>{
-      bleConnected=false;
-      btn.textContent='Connect BLE';
-      btn.classList.remove('connected');
+      bleConnected=false; btn.textContent='🔵 Connect BLE';
+      btn.classList.remove('connected'); btn.disabled=false;
     });
-  } catch(e) {
-    btn.textContent='Connect BLE';
-    console.error(e);
-  }
+  }catch(e){btn.textContent='🔵 Connect BLE'; btn.disabled=false;}
 }
  
-async function onPacket() {
-  try {
-    const val = await fromRadioChar.readValue();
-    if (!val || val.byteLength < 2) return;
-    const bytes = new Uint8Array(val.buffer);
-    // Extract node ID
-    const view = new DataView(val.buffer);
-    let nodeId = null;
-    for (let off of [4,0,8]) {
-      if (bytes.length>=off+4){
-        const c=view.getUint32(off,false);
-        if(c>0x10000&&c!==0xFFFFFFFF){nodeId=c;break;}
-      }
+async function onPacket(){
+  try{
+    const val=await fromRadioChar.readValue();
+    if(!val||val.byteLength<2) return;
+    const bytes=new Uint8Array(val.buffer);
+    const view=new DataView(val.buffer);
+    let nodeId=null;
+    for(let off of [4,0,8]){
+      if(bytes.length>=off+4){const c=view.getUint32(off,false);if(c>0x10000&&c!==0xFFFFFFFF){nodeId=c;break;}}
     }
-    if (nodeId && !knownNodes[nodeId]) {
+    if(nodeId&&!knownNodes[nodeId]){
       knownNodes[nodeId]=true;
-      showToast('📡 New node detected! Wild Pokémon incoming!');
+      document.getElementById('node-num').textContent=Object.keys(knownNodes).length;
+      showToast('📡 New node! Wild Pokémon incoming...');
       setTimeout(()=>maybeSpawnEncounter(),3000);
     }
-  } catch(e){}
+  }catch(e){}
 }
  
-async function requestNodes() {
-  if (!bleConnected||!toRadioChar) return;
-  try { await toRadioChar.writeValue(new Uint8Array([0x18,0x01])); } catch(e){}
+async function requestNodes(){
+  if(!bleConnected||!toRadioChar) return;
+  try{await toRadioChar.writeValue(new Uint8Array([0x18,0x01]));}catch(e){}
 }
  
-async function drainBuffer() {
-  if (!bleConnected||!fromRadioChar) return;
+async function drainBuffer(){
+  if(!bleConnected||!fromRadioChar) return;
   let empty=0;
   while(empty<3){
-    try{
-      const v=await fromRadioChar.readValue();
-      if(!v||v.byteLength===0){empty++;}else{empty=0;onPacket();}
-    }catch(e){empty++;}
+    try{const v=await fromRadioChar.readValue();if(!v||v.byteLength===0){empty++;}else{empty=0;onPacket();}}
+    catch(e){empty++;}
     await sleep(150);
   }
 }
  
-// ─── BATTLE BUTTON EVENTS ────────────────────────────────
-document.getElementById('btn-attack').onclick = doAttack;
-document.getElementById('btn-catch').onclick  = doThrowBall;
-document.getElementById('btn-run').onclick    = doRun;
-document.getElementById('btn-swap').onclick   = ()=>{
-  // Cycle to next living party member
-  let next = (activeSlot+1)%playerParty.length;
-  let tries=0;
+// ── EVENTS ───────────────────────────────────────────────
+document.getElementById('ble-btn').onclick   =connectBLE;
+document.getElementById('btn-scan').onclick  =requestNodes;
+document.getElementById('btn-drain').onclick =drainBuffer;
+document.getElementById('btn-attack').onclick=doAttack;
+document.getElementById('btn-catch').onclick =doThrowBall;
+document.getElementById('btn-run').onclick   =doRun;
+document.getElementById('btn-swap').onclick  =()=>{
+  let next=(activeSlot+1)%playerParty.length,tries=0;
   while(playerParty[next].hp<=0&&tries<playerParty.length){next=(next+1)%playerParty.length;tries++;}
   if(tries>=playerParty.length){setBattleLog('No other Pokémon available!');return;}
   activeSlot=next;
-  const active=playerParty[activeSlot];
-  playerHP=active.hp; playerMaxHP=active.maxHP;
-  document.getElementById('player-battle-sprite').src=active.back;
-  document.getElementById('player-label').textContent=active.name;
-  updateHPBars();
-  setBattleLog(`Go, ${active.name}!`);
-  renderParty();
+  const a=playerParty[activeSlot];
+  playerHP=a.hp; playerMaxHP=a.maxHP;
+  document.getElementById('player-battle-sprite').src=a.back;
+  document.getElementById('player-label').textContent=a.name;
+  updateHPBars(); setBattleLog(`Go, ${a.name}!`); renderParty();
 };
- 
-document.getElementById('ble-btn').onclick    = connectBLE;
-document.getElementById('btn-scan').onclick   = requestNodes;
-document.getElementById('btn-drain').onclick  = drainBuffer;
-document.getElementById('caught-ok').onclick  = ()=>{
+document.getElementById('caught-ok').onclick=()=>{
   document.getElementById('caught-popup').classList.add('hidden');
-  inBattle=false;
-  lastBattleTime=Date.now();
-  renderParty();
-  updateMarkerSprite();
+  inBattle=false; lastBattleTime=Date.now();
+  renderParty(); updateMapMarker();
 };
- 
-// Heal party when near landmark
-setInterval(()=>{
-  if(!playerPos) return;
-  LANDMARKS.forEach(lm=>{
-    if(distM(playerPos.lat,playerPos.lng,lm.lat,lm.lng)<LANDMARK_RADIUS_M){
-      playerParty.forEach(m=>m.hp=m.maxHP);
-      renderParty();
-    }
-  });
-},10000);
 </script>
 </body>
 </html>
