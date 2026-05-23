@@ -1,4 +1,5 @@
-ML
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -118,17 +119,16 @@ button:active:not(:disabled){transform:scale(0.97)}
 .empty{text-align:center;padding:30px;color:#444;font-size:13px}
  
 /* walking animation */
-#walk-scene{text-align:center;padding:10px 0 4px;overflow:hidden;position:relative;height:80px;margin-bottom:8px}
+#walk-scene{text-align:center;padding:6px 0 4px;overflow:hidden;position:relative;height:88px;margin-bottom:8px}
 #walk-scene.hidden{display:none}
-.walk-track{position:relative;width:100%;height:80px}
-.walk-char{position:absolute;bottom:8px;display:flex;flex-direction:column;align-items:center;gap:0;animation:walkAcross 8s linear infinite}
-.walk-char.ash{animation-delay:0s}
-.walk-char.pika{animation-delay:0.3s;bottom:6px}
-@keyframes walkAcross{0%{left:-60px}100%{left:calc(100% + 60px)}}
-.ash-sprite{font-size:28px;animation:walkBob 0.4s steps(1) infinite}
-.pika-sprite img{width:32px;height:32px;image-rendering:pixelated;animation:walkBob 0.4s steps(1) infinite;animation-delay:0.2s}
-@keyframes walkBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
-.walk-grass{position:absolute;bottom:0;left:0;right:0;font-size:11px;color:#2a5a2a;letter-spacing:1px;white-space:nowrap;overflow:hidden}
+.walk-track{position:relative;width:100%;height:88px}
+.walk-char{position:absolute;bottom:14px;display:flex;flex-direction:column;align-items:center;animation:walkAcross 7s linear infinite}
+.walk-char.ash{animation-duration:7s;bottom:18px}
+.walk-char.pika{animation-duration:7s;animation-delay:0.8s;bottom:14px}
+@keyframes walkAcross{0%{left:-60px;opacity:0}5%{opacity:1}90%{opacity:1}100%{left:calc(100% + 60px);opacity:0}}
+.walk-char.ash svg{animation:ashBob 0.35s steps(2) infinite}
+@keyframes ashBob{0%{transform:translateY(0px)}50%{transform:translateY(2px)}}
+.walk-grass{position:absolute;bottom:0;left:0;right:0;font-size:12px;color:#1a4a1a;letter-spacing:2px;white-space:nowrap;overflow:hidden;line-height:1}
 .walk-label{font-size:10px;color:#444;text-align:center;margin-bottom:6px}
  
 /* pokemon sprites in battle */
@@ -168,17 +168,56 @@ button:active:not(:disabled){transform:scale(0.97)}
   <div class="tab active" data-tab="world">🌿 World</div>
   <div class="tab" data-tab="team">🎒 Team</div>
   <div class="tab" data-tab="dex">📖 Caught</div>
+  <div class="tab" data-tab="save">💾 Save</div>
 </div>
  
 <!-- WORLD VIEW -->
 <div class="view active" id="view-world">
   <div id="walk-scene">
     <div class="walk-track">
+      <!-- Ash pixel art SVG walker -->
       <div class="walk-char ash">
-        <div class="ash-sprite">🧢</div>
+        <svg width="24" height="36" viewBox="0 0 12 18" style="image-rendering:pixelated" xmlns="http://www.w3.org/2000/svg">
+          <!-- cap -->
+          <rect x="2" y="0" width="8" height="2" fill="#e03030"/>
+          <rect x="1" y="1" width="10" height="3" fill="#e03030"/>
+          <rect x="0" y="2" width="12" height="1" fill="#e03030"/>
+          <!-- cap brim -->
+          <rect x="0" y="3" width="5" height="1" fill="#333"/>
+          <!-- face -->
+          <rect x="2" y="4" width="8" height="5" fill="#f5c880"/>
+          <!-- eyes -->
+          <rect x="3" y="5" width="2" height="2" fill="#222"/>
+          <rect x="7" y="5" width="2" height="2" fill="#222"/>
+          <!-- cheeks -->
+          <rect x="2" y="7" width="2" height="1" fill="#f09090"/>
+          <rect x="8" y="7" width="2" height="1" fill="#f09090"/>
+          <!-- mouth -->
+          <rect x="4" y="8" width="4" height="1" fill="#c07050"/>
+          <!-- jacket body -->
+          <rect x="1" y="9" width="10" height="5" fill="#1a4aa0"/>
+          <!-- jacket zipper -->
+          <rect x="5" y="9" width="2" height="5" fill="#f0f0f0"/>
+          <!-- arms (animated via CSS) -->
+          <rect x="0" y="9" width="1" height="4" fill="#1a4aa0" class="arm-l"/>
+          <rect x="11" y="10" width="1" height="4" fill="#1a4aa0" class="arm-r"/>
+          <!-- hands -->
+          <rect x="0" y="13" width="1" height="1" fill="#f5c880"/>
+          <rect x="11" y="14" width="1" height="1" fill="#f5c880"/>
+          <!-- pants -->
+          <rect x="2" y="14" width="3" height="3" fill="#2a2a60"/>
+          <rect x="7" y="14" width="3" height="3" fill="#2a2a60"/>
+          <!-- shoes -->
+          <rect x="1" y="17" width="4" height="1" fill="#333"/>
+          <rect x="7" y="17" width="4" height="1" fill="#333"/>
+        </svg>
       </div>
+      <!-- Pikachu animated GIF from PokeAPI -->
       <div class="walk-char pika">
-        <div class="pika-sprite"><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png" alt="Pikachu"/></div>
+        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/25.gif"
+             alt="Pikachu" width="40" height="40"
+             style="image-rendering:pixelated"
+             onerror="this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png'"/>
       </div>
       <div class="walk-grass">🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿</div>
     </div>
@@ -197,6 +236,30 @@ button:active:not(:disabled){transform:scale(0.97)}
   <div id="dex-list"><div class="empty">No Pokémon caught yet</div></div>
 </div>
  
+<!-- SAVE VIEW -->
+<div class="view" id="view-save">
+  <div style="margin-bottom:10px;font-size:11px;color:#666;line-height:1.6">
+    Tap <b style="color:#ccc">Save Game</b> to generate your save code. Copy it somewhere safe.
+    To restore, paste it in and tap <b style="color:#ccc">Load Code</b>.
+  </div>
+  <button id="btn-save" style="width:100%;margin-bottom:8px;background:#1a3a1a;color:#48d058;border-color:#2a5a2a">💾 Save Game</button>
+  <div id="save-code-box" style="display:none;margin-bottom:12px">
+    <div style="font-size:10px;color:#666;margin-bottom:4px">Your save code — tap to select all:</div>
+    <textarea id="save-code-out" readonly onclick="this.select()"
+      style="width:100%;height:90px;background:#0a0a0a;border:1px solid #333;border-radius:6px;
+             color:#48d058;font-family:monospace;font-size:10px;padding:8px;resize:none"></textarea>
+    <button id="btn-copy-code" style="width:100%;margin-top:6px">📋 Copy to Clipboard</button>
+  </div>
+  <div style="border-top:1px solid #222;padding-top:12px;margin-top:4px">
+    <div style="font-size:10px;color:#666;margin-bottom:4px">Paste save code to restore:</div>
+    <textarea id="save-code-in" placeholder="Paste save code here..."
+      style="width:100%;height:90px;background:#0a0a0a;border:1px solid #333;border-radius:6px;
+             color:#ccc;font-family:monospace;font-size:10px;padding:8px;resize:none"></textarea>
+    <button id="btn-load" style="width:100%;margin-top:6px;background:#1a1a3a;color:#a0a0ff;border-color:#404080">📥 Load Code</button>
+  </div>
+  <div id="save-status" style="margin-top:8px;font-size:11px;text-align:center;min-height:18px"></div>
+</div>
+ 
 <div class="log" id="log"></div>
  
 <!-- BATTLE SCREEN -->
@@ -211,7 +274,7 @@ button:active:not(:disabled){transform:scale(0.97)}
         <div class="hp-bar-bg"><div class="hp-bar" id="b-php" style="width:100%"></div></div>
         <div class="hp-text" id="b-php-text">HP: —</div>
         <div id="b-pstatus"></div>
-        <div class="active-label" id="b-active-label">▲ ACTIVE</div>
+        <div class="active-label">▲ ACTIVE</div>
       </div>
       <div class="fighter enemy">
         <div class="fighter-name" id="b-ename">—</div>
@@ -222,8 +285,8 @@ button:active:not(:disabled){transform:scale(0.97)}
       </div>
     </div>
     <div class="sprite-area">
-      <span class="sprite-enemy" id="b-esprite">?</span>
       <span class="sprite-player" id="b-psprite">?</span>
+      <span class="sprite-enemy" id="b-esprite">?</span>
     </div>
   </div>
  
@@ -1095,6 +1158,11 @@ document.querySelectorAll('.tab').forEach(tab => {
     document.getElementById('view-'+tab.dataset.tab).classList.add('active');
     if (tab.dataset.tab==='team') renderTeam();
     if (tab.dataset.tab==='dex') renderDex();
+    if (tab.dataset.tab==='save') {
+      // clear load input and status when opening
+      document.getElementById('save-code-in').value = '';
+      document.getElementById('save-status').textContent = '';
+    }
   });
 });
  
@@ -1115,6 +1183,64 @@ document.getElementById('clear-btn').addEventListener('click', () => {
   nodes = {};
   renderNodeList();
   log('Nodes cleared','am');
+});
+ 
+// ==================== SAVE / LOAD ====================
+const saveGame = () => {
+  const data = {
+    v: 1,
+    team: playerTeam,
+    box: caughtBox,
+    activeSlot,
+  };
+  try {
+    const json = JSON.stringify(data);
+    const b64 = btoa(unescape(encodeURIComponent(json)));
+    document.getElementById('save-code-out').value = b64;
+    document.getElementById('save-code-box').style.display = 'block';
+    setSaveStatus('✓ Save code generated!', '#48d058');
+  } catch(e) {
+    setSaveStatus('Save failed: '+e.message, '#e24b4a');
+  }
+};
+ 
+const loadGame = () => {
+  const raw = document.getElementById('save-code-in').value.trim();
+  if (!raw) { setSaveStatus('Paste a save code first.', '#f0a030'); return; }
+  try {
+    const json = decodeURIComponent(escape(atob(raw)));
+    const data = JSON.parse(json);
+    if (!data.v || !Array.isArray(data.team)) throw new Error('Invalid save data');
+    playerTeam = data.team;
+    caughtBox = data.box || [];
+    activeSlot = data.activeSlot || 0;
+    renderTeam();
+    renderDex();
+    setSaveStatus('✓ Game loaded! '+playerTeam.length+' Pokémon restored.', '#48d058');
+    log('Save loaded — '+playerTeam.length+' Pokémon, '+caughtBox.length+' in box','hi');
+  } catch(e) {
+    setSaveStatus('Load failed — bad code. ' + e.message, '#e24b4a');
+  }
+};
+ 
+const setSaveStatus = (msg, color) => {
+  const el = document.getElementById('save-status');
+  el.textContent = msg;
+  el.style.color = color;
+  setTimeout(() => { el.textContent = ''; }, 4000);
+};
+ 
+document.getElementById('btn-save').addEventListener('click', saveGame);
+document.getElementById('btn-load').addEventListener('click', loadGame);
+document.getElementById('btn-copy-code').addEventListener('click', () => {
+  const txt = document.getElementById('save-code-out').value;
+  if (!txt) return;
+  navigator.clipboard.writeText(txt).then(() => {
+    setSaveStatus('✓ Copied to clipboard!', '#48d058');
+  }).catch(() => {
+    document.getElementById('save-code-out').select();
+    setSaveStatus('Select the code above and copy manually.', '#f0a030');
+  });
 });
  
 // ==================== BLUETOOTH CHECK ====================
