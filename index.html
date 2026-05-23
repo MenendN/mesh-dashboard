@@ -13,12 +13,14 @@
     .dot { width: 10px; height: 10px; border-radius: 50%; background: #e24b4a; flex-shrink: 0; }
     .dot.green { background: #1D9E75; }
     .dot.amber { background: #EF9F27; }
-    .btn-row { display: flex; gap: 10px; margin-bottom: 24px; }
-    button { flex: 1; padding: 12px; border-radius: 10px; border: none; background: #1D9E75; color: white; font-size: 15px; font-weight: 500; cursor: pointer; }
-    button:disabled { background: #444; color: #888; cursor: default; }
-    button:active { transform: scale(0.98); }
-    #scan-btn { background: #1a3a8f; }
-    #scan-btn:disabled { background: #444; color: #888; }
+    .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 24px; }
+    button { padding: 10px 8px; border-radius: 10px; border: none; background: #1D9E75; color: white; font-size: 13px; font-weight: 500; cursor: pointer; }
+    button:disabled { background: #2a2d3a; color: #555; cursor: default; }
+    button:active:not(:disabled) { transform: scale(0.97); }
+    #connect-btn { grid-column: span 2; font-size: 15px; padding: 12px; }
+    #drain-btn { background: #1a3a8f; }
+    #dump-btn  { background: #5a2d8f; }
+    #clear-btn { background: #444; }
     .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .section-title { font-size: 15px; font-weight: 500; }
     .count { font-size: 13px; color: #888; }
@@ -29,11 +31,13 @@
     .node-meta { font-size: 12px; color: #888; margin-top: 3px; }
     .empty { text-align: center; padding: 40px 20px; color: #555; font-size: 14px; }
     .empty-icon { font-size: 40px; margin-bottom: 10px; }
-    .log { margin-top: 24px; background: #1a1d27; border-radius: 10px; padding: 12px; font-family: monospace; font-size: 12px; color: #666; min-height: 60px; max-height: 160px; overflow-y: auto; border: 1px solid #2a2d3a; }
+    .log { margin-top: 24px; background: #1a1d27; border-radius: 10px; padding: 12px; font-family: monospace; font-size: 12px; color: #666; min-height: 80px; max-height: 200px; overflow-y: auto; border: 1px solid #2a2d3a; }
     .log div { margin-bottom: 2px; }
     .log div.hi { color: #1D9E75; }
     .log div.er { color: #e24b4a; }
     .log div.am { color: #EF9F27; }
+    .log div.pu { color: #a78bfa; }
+    .raw-hex { font-size: 10px; color: #444; word-break: break-all; }
   </style>
 </head>
 <body>
@@ -46,9 +50,12 @@
     <span id="status-text">Disconnected</span>
   </div>
  
-  <div class="btn-row">
-    <button id="connect-btn">&#x1F4F6; Connect</button>
-    <button id="scan-btn" disabled>&#x1F4E1; Request Nodes</button>
+  <div class="btn-grid">
+    <button id="connect-btn">&#x1F4F6; Connect to Meshtastic</button>
+    <button id="scan-btn"  disabled>&#x1F4E1; Request Nodes</button>
+    <button id="drain-btn" disabled>&#x23EC; Drain Buffer</button>
+    <button id="dump-btn"  disabled>&#x1F4CB; Dump Raw Packets</button>
+    <button id="clear-btn" disabled>&#x1F5D1; Clear List</button>
   </div>
  
   <div class="section-header">
@@ -59,7 +66,7 @@
   <div id="node-list">
     <div class="empty" id="empty-state">
       <div class="empty-icon">&#x1F4E1;</div>
-      Connect to start scanning
+      Connect then tap buttons to discover nodes
     </div>
   </div>
  
@@ -86,40 +93,56 @@
     el.scrollTop = el.scrollHeight;
   };
  
+  const logRaw = (bytes) => {
+    const el = document.getElementById('log');
+    const line = document.createElement('div');
+    line.className = 'raw-hex';
+    line.textContent = '  HEX: ' + Array.from(bytes).map(b => b.toString(16).padStart(2,'0')).join(' ');
+    el.appendChild(line);
+    el.scrollTop = el.scrollHeight;
+  };
+ 
   const setStatus = (text, state) => {
     document.getElementById('status-text').textContent = text;
     const dot = document.getElementById('dot');
     dot.className = 'dot' + (state ? ' ' + state : '');
   };
  
+  const setButtons = (on) => {
+    ['scan-btn','drain-btn','dump-btn','clear-btn'].forEach(id => {
+      document.getElementById(id).disabled = !on;
+    });
+    document.getElementById('connect-btn').disabled = on;
+    document.getElementById('connect-btn').textContent = on ? '✓ Connected' : '📶 Connect to Meshtastic';
+  };
+ 
   const addNode = (id, name, snr) => {
     if (nodes[id]) return;
     nodes[id] = true;
     document.getElementById('empty-state')?.remove();
-    const count = Object.keys(nodes).length;
-    document.getElementById('count').textContent = count + ' found';
+    document.getElementById('count').textContent = Object.keys(nodes).length + ' found';
     const shortId = Number(id).toString(16).toUpperCase().padStart(8,'0').slice(-4);
-    const snrText = snr !== undefined ? ' &nbsp;·&nbsp; SNR: ' + snr + ' dB' : '';
     const card = document.createElement('div');
     card.className = 'node-card';
     card.innerHTML =
       '<div class="checkmark">&#x2713;</div>' +
       '<div style="flex:1">' +
         '<div class="node-name">' + (name || 'Unknown Node') + '</div>' +
-        '<div class="node-meta">ID: !' + shortId + snrText + '</div>' +
+        '<div class="node-meta">ID: !' + shortId + (snr !== undefined ? ' &nbsp;·&nbsp; SNR: ' + snr + ' dB' : '') + '</div>' +
       '</div>';
     document.getElementById('node-list').appendChild(card);
     log('Node discovered: ' + (name || '!' + shortId), 'hi');
   };
  
-  const parsePacket = (buffer) => {
+  const parsePacket = (buffer, showRaw) => {
     try {
       const bytes = new Uint8Array(buffer);
-      if (bytes.length < 2) return;
-      log('Packet ' + bytes.length + ' bytes');
+      if (bytes.length < 2) { log('Empty packet'); return; }
+      log('Packet ' + bytes.length + ' bytes', 'am');
+      if (showRaw) logRaw(bytes);
+ 
       const view = new DataView(buffer);
-      let nodeId = null;
-      let name = null;
+      let nodeId = null, name = null;
  
       for (let offset of [4, 0, 8, 12]) {
         if (bytes.length >= offset + 4) {
@@ -138,71 +161,89 @@
         } else { i++; }
       }
  
+      if (name) log('  Name found: ' + name, 'pu');
+      if (nodeId) log('  ID found: ' + nodeId.toString(16), 'pu');
+ 
       if (!nodeId && name) nodeId = Math.abs(name.split('').reduce((h,c) => Math.imul(31,h)+c.charCodeAt(0)|0, 0));
       if (nodeId || name) addNode(nodeId, name, undefined);
+      else log('  No node data in this packet');
     } catch(e) { log('Parse error: ' + e.message, 'er'); }
   };
  
-  const readFromRadio = async () => {
+  const readFromRadio = async (showRaw) => {
     try {
       if (!server.connected) return;
       const val = await fromRadioChar.readValue();
-      if (val && val.byteLength > 0) parsePacket(val.buffer);
-    } catch(e) { log('Read error: ' + e.message, 'er'); }
+      if (val && val.byteLength > 0) parsePacket(val.buffer, showRaw);
+      return val ? val.byteLength : 0;
+    } catch(e) { log('Read error: ' + e.message, 'er'); return 0; }
   };
  
-  // Send a Want_Config_Id request — asks node to dump all known node info
-  const requestNodes = async () => {
-    if (!connected || !toRadioChar) { log('Not connected', 'er'); return; }
-    try {
-      log('Sending node info request...', 'am');
-      // ToRadio protobuf: want_config_id field (field 3, varint) = 1
-      // Encoded as: 0x18 0x01 (field 3, wire type 0, value 1)
-      const packet = new Uint8Array([0x18, 0x01]);
-      await toRadioChar.writeValue(packet);
-      log('Request sent! Waiting for responses...', 'hi');
-    } catch(e) {
-      log('Send error: ' + e.message, 'er');
+  // Drain: keep reading fromRadio until empty
+  const drainBuffer = async () => {
+    log('Draining buffer...', 'am');
+    let count = 0, empty = 0;
+    while (empty < 3 && count < 30) {
+      const len = await readFromRadio(false);
+      if (len === 0) empty++;
+      else { empty = 0; count++; }
+      await sleep(100);
     }
+    log('Drain complete. ' + count + ' packets read.', 'hi');
+  };
+ 
+  // Dump: send want_config then drain showing raw hex
+  const dumpPackets = async () => {
+    log('Sending want_config request...', 'am');
+    try {
+      await toRadioChar.writeValue(new Uint8Array([0x18, 0x01]));
+      log('Request sent, reading responses...', 'hi');
+      await sleep(500);
+      let count = 0, empty = 0;
+      while (empty < 3 && count < 50) {
+        const len = await readFromRadio(true);
+        if (len === 0) empty++;
+        else { empty = 0; count++; }
+        await sleep(150);
+      }
+      log('Dump complete. ' + count + ' packets.', 'hi');
+    } catch(e) { log('Dump error: ' + e.message, 'er'); }
+  };
+ 
+  const requestNodes = async () => {
+    log('Requesting node info...', 'am');
+    try {
+      await toRadioChar.writeValue(new Uint8Array([0x18, 0x01]));
+      log('Request sent!', 'hi');
+    } catch(e) { log('Error: ' + e.message, 'er'); }
   };
  
   const setupService = async () => {
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
-        if (!server.connected) {
-          log('Reconnecting GATT (attempt ' + attempt + ')...');
-          server = await device.gatt.connect();
-          await sleep(500);
-        }
-        log('Getting Meshtastic service...');
+        if (!server.connected) { server = await device.gatt.connect(); await sleep(500); }
         const service = await server.getPrimaryService(MESHTASTIC_SERVICE);
         log('Service found!', 'hi');
- 
         fromRadioChar = await service.getCharacteristic(FROMRADIO_CHAR);
         fromNumChar   = await service.getCharacteristic(FROMNUM_CHAR);
         toRadioChar   = await service.getCharacteristic(TORADIO_CHAR);
- 
         await fromNumChar.startNotifications();
-        fromNumChar.addEventListener('characteristicvaluechanged', readFromRadio);
- 
+        fromNumChar.addEventListener('characteristicvaluechanged', () => readFromRadio(false));
         connected = true;
         setStatus('Connected: ' + (device.name || 'device'), 'green');
-        document.getElementById('connect-btn').textContent = '✓ Connected';
-        document.getElementById('connect-btn').disabled = true;
-        document.getElementById('scan-btn').disabled = false;
+        setButtons(true);
         const empty = document.getElementById('empty-state');
-        if (empty) empty.innerHTML = '<div class="empty-icon">&#x1F4E1;</div>Scanning for nodes...';
-        log('Ready! Tap "Request Nodes" to force discovery.', 'hi');
+        if (empty) empty.innerHTML = '<div class="empty-icon">&#x1F4E1;</div>Scanning... tap buttons to force discovery';
+        log('Connected! Tap "Drain Buffer" or "Dump Raw Packets" to find nodes.', 'hi');
         return true;
- 
       } catch(e) {
         log('Attempt ' + attempt + ' failed: ' + e.message, 'er');
-        if (attempt < 3) { log('Retrying in 1s...'); await sleep(1000); }
+        if (attempt < 3) { await sleep(1000); }
       }
     }
-    setStatus('Service not found', '');
-    document.getElementById('connect-btn').textContent = '📶 Try Again';
+    setStatus('Failed', '');
     document.getElementById('connect-btn').disabled = false;
+    document.getElementById('connect-btn').textContent = '📶 Try Again';
     return false;
   };
  
@@ -220,43 +261,37 @@
           acceptAllDevices: true,
           optionalServices: [MESHTASTIC_SERVICE]
         });
-      } catch(e2) {
-        log('Error: ' + e2.message, 'er');
-        setStatus('Disconnected', '');
-        return;
-      }
+      } catch(e2) { log('Error: ' + e2.message, 'er'); setStatus('Disconnected',''); return; }
     }
- 
     log('Found: ' + (device.name || 'unnamed'));
     try {
       server = await device.gatt.connect();
       log('GATT connected');
       await sleep(600);
-    } catch(e) {
-      log('GATT failed: ' + e.message, 'er');
-      setStatus('Disconnected', '');
-      return;
-    }
- 
+    } catch(e) { log('GATT failed: ' + e.message, 'er'); setStatus('Disconnected',''); return; }
     await setupService();
- 
     device.addEventListener('gattserverdisconnected', () => {
       connected = false;
-      setStatus('Disconnected', '');
-      log('Device disconnected', 'er');
-      document.getElementById('connect-btn').textContent = '📶 Reconnect';
+      setStatus('Disconnected','');
+      log('Disconnected','er');
+      setButtons(false);
       document.getElementById('connect-btn').disabled = false;
-      document.getElementById('scan-btn').disabled = true;
+      document.getElementById('connect-btn').textContent = '📶 Reconnect';
     });
   };
  
-  if (!navigator.bluetooth) {
-    log('Web Bluetooth not supported!', 'er');
-    document.getElementById('connect-btn').disabled = true;
-  }
+  if (!navigator.bluetooth) { log('Web Bluetooth not supported!','er'); document.getElementById('connect-btn').disabled = true; }
  
   document.getElementById('connect-btn').addEventListener('click', () => { if (!connected) connectBLE(); });
   document.getElementById('scan-btn').addEventListener('click', requestNodes);
+  document.getElementById('drain-btn').addEventListener('click', drainBuffer);
+  document.getElementById('dump-btn').addEventListener('click', dumpPackets);
+  document.getElementById('clear-btn').addEventListener('click', () => {
+    nodes = {};
+    document.getElementById('node-list').innerHTML = '<div class="empty" id="empty-state"><div class="empty-icon">&#x1F4E1;</div>List cleared — tap a button to rediscover</div>';
+    document.getElementById('count').textContent = '0 found';
+    log('List cleared', 'am');
+  });
 </script>
 </body>
 </html>
