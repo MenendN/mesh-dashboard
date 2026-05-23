@@ -1,6 +1,4 @@
-
-raw
-Index · HTML
+ML
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -119,6 +117,25 @@ button:active:not(:disabled){transform:scale(0.97)}
 .dex-moves{font-size:10px;color:#8080c0;margin-top:2px}
 .empty{text-align:center;padding:30px;color:#444;font-size:13px}
  
+/* walking animation */
+#walk-scene{text-align:center;padding:10px 0 4px;overflow:hidden;position:relative;height:80px;margin-bottom:8px}
+#walk-scene.hidden{display:none}
+.walk-track{position:relative;width:100%;height:80px}
+.walk-char{position:absolute;bottom:8px;display:flex;flex-direction:column;align-items:center;gap:0;animation:walkAcross 8s linear infinite}
+.walk-char.ash{animation-delay:0s}
+.walk-char.pika{animation-delay:0.3s;bottom:6px}
+@keyframes walkAcross{0%{left:-60px}100%{left:calc(100% + 60px)}}
+.ash-sprite{font-size:28px;animation:walkBob 0.4s steps(1) infinite}
+.pika-sprite img{width:32px;height:32px;image-rendering:pixelated;animation:walkBob 0.4s steps(1) infinite;animation-delay:0.2s}
+@keyframes walkBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+.walk-grass{position:absolute;bottom:0;left:0;right:0;font-size:11px;color:#2a5a2a;letter-spacing:1px;white-space:nowrap;overflow:hidden}
+.walk-label{font-size:10px;color:#444;text-align:center;margin-bottom:6px}
+ 
+/* pokemon sprites in battle */
+.poke-img{width:80px;height:80px;image-rendering:pixelated}
+.poke-img-small{width:56px;height:56px;image-rendering:pixelated}
+.poke-img-front{width:80px;height:80px;image-rendering:pixelated;transform:scaleX(-1)}
+ 
 /* log */
 .log{background:#0a0a0a;border:1px solid #1a1a1a;border-radius:6px;padding:8px;font-size:11px;color:#555;min-height:60px;max-height:150px;overflow-y:auto;margin-top:10px}
 .log div{margin-bottom:1px}
@@ -155,6 +172,18 @@ button:active:not(:disabled){transform:scale(0.97)}
  
 <!-- WORLD VIEW -->
 <div class="view active" id="view-world">
+  <div id="walk-scene">
+    <div class="walk-track">
+      <div class="walk-char ash">
+        <div class="ash-sprite">🧢</div>
+      </div>
+      <div class="walk-char pika">
+        <div class="pika-sprite"><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png" alt="Pikachu"/></div>
+      </div>
+      <div class="walk-grass">🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿🌿</div>
+    </div>
+  </div>
+  <div class="walk-label" id="idle-label">🔴 No nodes detected — wild Pokémon appear every 3 min</div>
   <div id="node-list"><div class="empty">Connect and scan to find nodes</div></div>
 </div>
  
@@ -482,9 +511,11 @@ const onNodeDetected = (nodeId, name, snr) => {
   // chance of encounter
   if (Math.random() > 0.6) {
     nodeCooldowns[cooldownKey] = now + 3*60*1000;
+    idleCountdown = 3*60;
     log('Wild Pokémon appeared from '+nodes[idStr].name+'!','hi');
     setTimeout(() => startWildEncounter(nodes[idStr], snr), 500);
   }
+  hideWalkIfNodes();
 };
  
 const renderNodeList = () => {
@@ -515,6 +546,35 @@ const renderNodeList = () => {
 setInterval(() => {
   if (document.getElementById('view-world').classList.contains('active')) renderNodeList();
 }, 5000);
+ 
+// ==================== IDLE ENCOUNTER (every 3 mins, no nodes) ====================
+let lastEncounterTime = Date.now();
+let idleCountdown = 3*60;
+ 
+const updateIdleLabel = () => {
+  const m = Math.floor(idleCountdown/60);
+  const s = idleCountdown%60;
+  const lbl = document.getElementById('idle-label');
+  if (lbl) lbl.textContent = Object.keys(nodes).length > 0
+    ? '📡 '+Object.keys(nodes).length+' node(s) nearby'
+    : `🌿 No nodes — wild encounter in ${m}:${String(s).padStart(2,'0')}`;
+};
+ 
+const walkScene = document.getElementById('walk-scene');
+const hideWalkIfNodes = () => {
+  if (walkScene) walkScene.style.opacity = Object.keys(nodes).length > 0 ? '0.4' : '1';
+};
+ 
+setInterval(() => {
+  if (battleState) return;
+  idleCountdown = Math.max(0, idleCountdown-1);
+  updateIdleLabel();
+  if (idleCountdown <= 0) {
+    idleCountdown = 3*60;
+    log('A wild Pokémon appeared out of nowhere!','hi');
+    startWildEncounter({id:'idle', name:'tall grass', snr:undefined}, undefined);
+  }
+}, 1000);
  
 // ==================== POKEMON FACTORY ====================
 const makePokemon = (dexEntry, level, isWild) => {
@@ -606,6 +666,8 @@ const showBattleScreen = () => {
 const hideBattleScreen = () => {
   document.getElementById('battle-screen').style.display = 'none';
   battleState = null;
+  idleCountdown = 3*60;
+  updateIdleLabel();
 };
  
 const blogMsg = (msg, cls) => {
@@ -621,7 +683,7 @@ const renderBattleUI = () => {
   const {wild, playerMon} = battleState;
   document.getElementById('b-ename').textContent = wild.name;
   document.getElementById('b-elevel').textContent = 'Lv.'+wild.level;
-  document.getElementById('b-esprite').textContent = wild.sprite;
+  document.getElementById('b-esprite').innerHTML = `<img class="poke-img" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${wild.dexId}.png" alt="${wild.name}"/>`;
   const epct = Math.max(0, wild.hp/wild.maxHp*100);
   const eBar = document.getElementById('b-ehp');
   eBar.style.width = epct+'%';
@@ -633,7 +695,7 @@ const renderBattleUI = () => {
  
   document.getElementById('b-pname').textContent = playerMon.name;
   document.getElementById('b-plevel').textContent = 'Lv.'+playerMon.level;
-  document.getElementById('b-psprite').textContent = playerMon.sprite;
+  document.getElementById('b-psprite').innerHTML = `<img class="poke-img-front" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${playerMon.dexId}.png" alt="${playerMon.name}" onerror="this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${playerMon.dexId}.png'"/>`;
   const ppct = Math.max(0, playerMon.hp/playerMon.maxHp*100);
   const pBar = document.getElementById('b-php');
   pBar.style.width = ppct+'%';
@@ -844,12 +906,24 @@ const showCatchAnimation = (wildMon, catchRate, cb) => {
   const spinSlot = (slotEl, delay, finalEmoji, isBall) => new Promise(resolve => {
     setTimeout(() => {
       let count = 0;
+      const allIds = POKEMON_DATA.map(p=>p.id);
       const interval = setInterval(() => {
-        slotEl.textContent = isBall ? '🔴' : POKEMON_EMOJIS[Math.floor(Math.random()*POKEMON_EMOJIS.length)];
+        if (isBall) {
+          slotEl.innerHTML = '🔴';
+          slotEl.style.fontSize = '32px';
+        } else {
+          const rid = allIds[Math.floor(Math.random()*allIds.length)];
+          slotEl.innerHTML = `<img style="width:48px;height:48px;image-rendering:pixelated" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${rid}.png"/>`;
+          slotEl.style.fontSize = '12px';
+        }
         count++;
         if (count > 10) {
           clearInterval(interval);
-          slotEl.textContent = finalEmoji;
+          if (isBall) {
+            slotEl.innerHTML = '🔴';
+          } else {
+            slotEl.innerHTML = `<img style="width:48px;height:48px;image-rendering:pixelated" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${catchState.wildMon.dexId}.png"/>`;
+          }
           slotEl.className = 'slot '+(isBall?'result-ball':'result-mon');
           resolve();
         }
@@ -865,17 +939,17 @@ const showCatchAnimation = (wildMon, catchRate, cb) => {
     spinSlot(slots[2], 600,  wildMon.sprite, false),
   ]).then(async () => {
     if (catchState.caught) {
-      // all line up as pokemon, then ball hits
       document.getElementById('catch-title').textContent = 'Direct hit!';
       await sleep(400);
-      slots.forEach(s=>{ s.textContent='🔴'; s.className='slot result-ball'; });
+      slots.forEach(s=>{ s.innerHTML='🔴'; s.style.fontSize='32px'; s.className='slot result-ball'; });
       await sleep(300);
-      document.getElementById('catch-final').textContent = wildMon.sprite;
+      document.getElementById('catch-final').innerHTML = `<img style="width:72px;height:72px;image-rendering:pixelated" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${catchState.wildMon.dexId}.png"/>`;
       document.getElementById('catch-msg').textContent = wildMon.name+' was caught!';
       document.getElementById('catch-msg').style.color = '#48d058';
     } else {
       document.getElementById('catch-title').textContent = 'Oh no!';
-      slots[Math.floor(Math.random()*3)].textContent = '❌';
+      const broke = Math.floor(Math.random()*3);
+      slots[broke].innerHTML = '❌'; slots[broke].style.fontSize='32px';
       document.getElementById('catch-msg').textContent = wildMon.name+' broke free!';
       document.getElementById('catch-msg').style.color = '#e24b4a';
     }
@@ -902,7 +976,7 @@ const showSwitchPanel = (forced) => {
     const el = document.createElement('div');
     el.className = 'team-slot'+(mon.status==='faint'?' fainted':'');
     const healInfo = mon.status==='faint' && mon.faintedAt ? ' (healing '+getHealTime(mon)+')' : '';
-    el.innerHTML = `<div class="slot-sprite">${mon.sprite}</div>
+    el.innerHTML = `<div class="slot-sprite"><img style="width:40px;height:40px;image-rendering:pixelated" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${mon.dexId}.png" alt="${mon.name}"/></div>
       <div class="slot-info">
         <div class="slot-name">${mon.name} Lv.${mon.level}</div>
         <div class="slot-stats">HP: ${mon.hp}/${mon.maxHp}${healInfo}</div>
@@ -965,7 +1039,7 @@ const renderTeam = () => {
     const healStr = mon.status==='faint'&&mon.faintedAt ? '<div class="heal-timer">⏱ '+getHealTime(mon)+'</div>' : '';
     const stStr = mon.status&&mon.status!=='faint'?`<span class="status-badge ${mon.status}">${mon.status.toUpperCase()}</span>`:'';
     div.innerHTML = `
-      <div class="slot-sprite">${mon.sprite}</div>
+      <div class="slot-sprite"><img style="width:40px;height:40px;image-rendering:pixelated" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${mon.dexId}.png" alt="${mon.name}"/></div>
       <div class="slot-info">
         <div class="slot-name">${mon.name} <span style="color:#666;font-size:10px">Lv.${mon.level}</span>${i===activeSlot?'<span style="color:#f8d030;font-size:9px;margin-left:6px">▲ ACTIVE</span>':''}</div>
         <div class="slot-stats">HP ${mon.hp}/${mon.maxHp} · ATK ${mon.atk} · DEF ${mon.def} · SPD ${mon.spd} ${stStr}</div>
@@ -992,7 +1066,7 @@ const renderDex = () => {
     div.className = 'dex-card';
     const moveStr = mon.moves.map(m=>m.name).join(', ');
     div.innerHTML = `
-      <div class="dex-sprite">${mon.sprite}</div>
+      <div class="dex-sprite"><img style="width:38px;height:38px;image-rendering:pixelated" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${mon.dexId}.png" alt="${mon.name}"/></div>
       <div class="dex-info">
         <div class="dex-name">${mon.name} <span class="badge ${mon.type}">${mon.type}</span> <span style="color:#666;font-size:10px">Lv.${mon.level}</span></div>
         <div class="dex-meta">HP ${mon.maxHp} · ATK ${mon.atk} · DEF ${mon.def} · SPD ${mon.spd}</div>
@@ -1057,4 +1131,3 @@ if (!navigator.bluetooth) {
 </script>
 </body>
 </html>
- 
