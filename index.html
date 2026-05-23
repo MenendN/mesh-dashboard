@@ -69,6 +69,8 @@ body{
   align-items:center;
   padding:0 16px;
   border-bottom:1px solid #1f2937;
+  z-index:50;
+  position:relative;
 }
 
 .logo{
@@ -79,20 +81,26 @@ body{
 #field-area{
   position:absolute;
   top:56px;
-  bottom:70px;
   left:0;
   right:0;
+  bottom:70px;
   background:linear-gradient(#87CEEB 0%,#87CEEB 55%,#4a8a3a 55%);
+  overflow:hidden;
 }
 
 #field-mons{
   position:absolute;
-  inset:0;
+  top:0;
+  left:0;
+  right:0;
+  bottom:33%;
 }
 
 .field-mon{
   position:absolute;
   bottom:40px;
+  left:50%;
+  transform:translateX(-50%);
   text-align:center;
 }
 
@@ -100,6 +108,28 @@ body{
   width:72px;
   height:72px;
   image-rendering:pixelated;
+}
+
+.field-mon div{
+  margin-top:8px;
+  font-size:18px;
+}
+
+#map-overlay{
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  height:33%;
+  z-index:20;
+  border-top:2px solid #1f2937;
+  overflow:hidden;
+  background:#000;
+}
+
+#map{
+  width:100%;
+  height:100%;
 }
 
 #bottom-nav{
@@ -112,6 +142,7 @@ body{
   display:grid;
   grid-template-columns:repeat(4,1fr);
   border-top:1px solid #1f2937;
+  z-index:100;
 }
 
 .nav-btn{
@@ -124,18 +155,6 @@ body{
 
 .nav-btn.active{
   color:#FFD700;
-}
-
-#map-overlay{
-  position:absolute;
-  inset:0;
-  z-index:100;
-  background:black;
-}
-
-#map{
-  position:absolute;
-  inset:0;
 }
 
 .modal{
@@ -194,7 +213,13 @@ body{
   </div>
 
   <div id="field-area">
+
     <div id="field-mons"></div>
+
+    <div id="map-overlay">
+      <div id="map"></div>
+    </div>
+
   </div>
 
   <div id="bottom-nav">
@@ -202,10 +227,6 @@ body{
     <button class="nav-btn" id="nav-map">🗺️<br>Map</button>
     <button class="nav-btn" id="nav-storage">📦<br>Storage</button>
     <button class="nav-btn" id="nav-dex">📖<br>Dex</button>
-  </div>
-
-  <div id="map-overlay" class="hidden">
-    <div id="map"></div>
   </div>
 
   <div id="storage-modal" class="modal hidden">
@@ -257,8 +278,6 @@ let map=null;
 function showToast(msg){
   const t=document.getElementById('node-toast');
 
-  if(!t) return;
-
   t.textContent=msg;
   t.classList.add('show');
 
@@ -268,6 +287,7 @@ function showToast(msg){
 }
 
 function buildStarterGrid(){
+
   const grid=document.getElementById('starter-grid');
 
   grid.innerHTML='';
@@ -316,8 +336,6 @@ function renderField(mon){
 
   div.className='field-mon';
 
-  div.style.left='40%';
-
   div.innerHTML=`
     <img src="${spriteUrl(mon.id)}">
     <div>${mon.name}</div>
@@ -344,15 +362,16 @@ function initMap(){
   L.marker([47.6205,-122.3493])
     .addTo(map)
     .bindPopup("Space Needle");
+
+  setTimeout(()=>{
+    map.invalidateSize();
+  },200);
 }
 
 function showView(view){
 
   document.querySelectorAll('.nav-btn')
     .forEach(btn=>btn.classList.remove('active'));
-
-  document.getElementById('map-overlay')
-    .classList.add('hidden');
 
   document.getElementById('storage-modal')
     .classList.add('hidden');
@@ -361,6 +380,7 @@ function showView(view){
     .classList.add('hidden');
 
   if(view==='field'){
+
     document.getElementById('nav-field')
       .classList.add('active');
   }
@@ -369,9 +389,6 @@ function showView(view){
 
     document.getElementById('nav-map')
       .classList.add('active');
-
-    document.getElementById('map-overlay')
-      .classList.remove('hidden');
 
     setTimeout(()=>{
       if(map){
