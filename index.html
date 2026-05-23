@@ -1,420 +1,1186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<title>PokéMesh</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#1a1a2e;color:#fff;height:100vh;width:100vw;overflow:hidden;}
 
-html, body {
-  height:100%;
-  overflow:hidden;
-}
-
-body{
-  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  background:#1a1a2e;
-  color:#fff;
-  height:100vh;
-  width:100vw;
-  overflow:hidden;
-}
+/* ── UTILITY ── */
+.hidden{display:none!important;}
 
 /* ── STARTER SCREEN ── */
-#starter-screen{
-  position:absolute;
-  inset:0;
-  z-index:200;
-  background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  padding:20px;
-}
-#starter-screen.hidden{display:none;}
-#starter-screen h1{
-  font-size:30px;
-  font-weight:800;
-  color:#FFD700;
-  text-shadow:0 0 20px #FFD70088;
-  margin-bottom:4px;
-}
-#starter-screen p{
-  font-size:13px;
-  color:#aaa;
-  margin-bottom:20px;
-}
+#starter-screen{position:absolute;inset:0;z-index:200;background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;}
+#starter-screen h1{font-size:30px;font-weight:800;color:#FFD700;text-shadow:0 0 20px #FFD70088;margin-bottom:4px;}
+#starter-screen p{font-size:13px;color:#aaa;margin-bottom:20px;}
+.starter-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:380px;}
+.starter-card{background:#ffffff11;border:2px solid #ffffff22;border-radius:14px;padding:12px 6px;text-align:center;cursor:pointer;transition:all .2s;}
+.starter-card:active{border-color:#FFD700;background:#FFD70022;transform:scale(1.04);}
+.starter-card img{width:68px;height:68px;image-rendering:pixelated;}
+.starter-card .sname{font-size:11px;font-weight:700;margin-top:4px;}
+.starter-card .stype{font-size:10px;color:#aaa;}
+.shiny-badge{display:inline-block;background:#FFD700;color:#000;font-size:9px;font-weight:700;padding:1px 5px;border-radius:20px;margin-top:2px;}
 
-.starter-grid{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:10px;
-  width:100%;
-  max-width:380px;
-}
+/* ── LOCATION SCREEN ── */
+#location-screen{position:absolute;inset:0;z-index:190;background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center;}
+#location-screen .loc-icon{font-size:64px;margin-bottom:16px;}
+#location-screen h2{font-size:22px;font-weight:800;color:#FFD700;margin-bottom:10px;}
+#location-screen p{font-size:13px;color:#aaa;line-height:1.6;margin-bottom:8px;max-width:320px;}
+#location-screen .loc-note{font-size:11px;color:#666;margin-bottom:28px;max-width:300px;}
+#btn-allow-location{background:#1D9E75;color:#fff;border:none;padding:16px 40px;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;width:100%;max-width:300px;margin-bottom:12px;}
+#btn-skip-location{background:transparent;color:#666;border:1px solid #333;padding:10px 24px;border-radius:10px;font-size:13px;cursor:pointer;width:100%;max-width:300px;}
+#location-status{font-size:12px;color:#aaa;margin-top:14px;min-height:18px;}
 
-.starter-card{
-  background:#ffffff11;
-  border:2px solid #ffffff22;
-  border-radius:14px;
-  padding:12px 6px;
-  text-align:center;
-  cursor:pointer;
-  transition:all .2s;
-}
-
-.starter-card:active{
-  border-color:#FFD700;
-  background:#FFD70022;
-  transform:scale(1.04);
-}
-
-.starter-card img{
-  width:68px;
-  height:68px;
-  image-rendering:pixelated;
-}
-
-.starter-card .sname{
-  font-size:11px;
-  font-weight:700;
-  margin-top:4px;
-}
-
-.starter-card .stype{
-  font-size:10px;
-  color:#aaa;
-}
-
-.shiny-badge{
-  display:inline-block;
-  background:#FFD700;
-  color:#000;
-  font-size:9px;
-  font-weight:700;
-  padding:1px 5px;
-  border-radius:20px;
-  margin-top:2px;
-}
-
-/* ── LOCATION PERMISSION SCREEN ── */
-#location-screen{
-  position:absolute;
-  inset:0;
-  z-index:190;
-  background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  padding:30px;
-  text-align:center;
-}
-
-#location-screen.hidden{display:none;}
-
-#location-screen .loc-icon{
-  font-size:64px;
-  margin-bottom:16px;
-}
-
-#location-screen h2{
-  font-size:22px;
-  font-weight:800;
-  color:#FFD700;
-  margin-bottom:10px;
-}
-
-#location-screen p{
-  font-size:13px;
-  color:#aaa;
-  line-height:1.6;
-  margin-bottom:8px;
-  max-width:320px;
-}
-
-#location-screen .loc-note{
-  font-size:11px;
-  color:#666;
-  margin-bottom:28px;
-  max-width:300px;
-}
-
-#btn-allow-location{
-  background:#1D9E75;
-  color:#fff;
-  border:none;
-  padding:16px 40px;
-  border-radius:14px;
-  font-size:16px;
-  font-weight:700;
-  cursor:pointer;
-  width:100%;
-  max-width:300px;
-  margin-bottom:12px;
-}
-
-#btn-allow-location:active{
-  background:#0F6E56;
-  transform:scale(0.98);
-}
-
-#btn-skip-location{
-  background:transparent;
-  color:#666;
-  border:1px solid #333;
-  padding:10px 24px;
-  border-radius:10px;
-  font-size:13px;
-  cursor:pointer;
-  width:100%;
-  max-width:300px;
-}
-
-#location-status{
-  font-size:12px;
-  color:#aaa;
-  margin-top:14px;
-  min-height:18px;
-}
-
-/* ── MAIN LAYOUT ── */
-#game-screen{
-  position:absolute;
-  inset:0;
-  display:flex;
-  flex-direction:column;
-  height:100dvh;
-  overflow:hidden;
-}
-
-/* ── TOP PANEL ── */
-#top-panel{
-  flex:1;
-  min-height:0;
-  display:flex;
-  flex-direction:column;
-  background:#1a1a2e;
-  overflow:hidden;
-}
+/* ── GAME SCREEN ── */
+#game-screen{position:absolute;inset:0;display:flex;flex-direction:column;}
 
 /* TOPBAR */
-#topbar{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:10px 14px;
-  background:#0f1117;
-  border-bottom:1px solid #ffffff11;
-  z-index:10;
-  flex-shrink:0;
-}
+#topbar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:#0f1117;border-bottom:1px solid #ffffff11;z-index:10;flex-shrink:0;}
+#topbar .logo{font-size:15px;font-weight:800;color:#FFD700;flex:1;}
+#ble-btn{background:#1D9E75;border:none;color:#fff;padding:5px 10px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;}
+#ble-btn.connected{background:#0F6E56;}
 
-#topbar .logo{
-  font-size:17px;
-  font-weight:800;
-  color:#FFD700;
-}
+/* GPS STATUS BAR */
+#gps-bar{display:flex;align-items:center;gap:8px;padding:4px 12px;background:#0a0d14;border-bottom:1px solid #ffffff08;font-size:10px;color:#555;flex-shrink:0;}
+#gps-dot{width:6px;height:6px;border-radius:50%;background:#e24b4a;flex-shrink:0;}
+#gps-dot.active{background:#1D9E75;}
+#gps-txt{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+#btn-gps-refresh{background:none;border:1px solid #333;color:#666;padding:2px 7px;border-radius:8px;font-size:10px;cursor:pointer;}
 
-#ble-btn{
-  background:#1D9E75;
-  border:none;
-  color:#fff;
-  padding:6px 12px;
-  border-radius:20px;
-  font-size:12px;
-  font-weight:600;
-  cursor:pointer;
-}
+/* FIELD AREA — the animated hangin-out scene */
+#field-area{flex:1;position:relative;overflow:hidden;background:linear-gradient(180deg,#87CEEB 0%,#87CEEB 55%,#4a8a3a 55%,#3a7a2a 100%);}
+/* Cloud */
+#field-area::before{content:'';position:absolute;top:14px;left:10%;width:60px;height:18px;background:#ffffffcc;border-radius:20px;box-shadow:30px -6px 0 10px #ffffffcc,60px 2px 0 6px #ffffffcc;animation:cloudDrift 18s linear infinite;}
+@keyframes cloudDrift{0%{transform:translateX(-10px);}50%{transform:translateX(20px);}100%{transform:translateX(-10px);}}
+/* Sun */
+#field-area::after{content:'☀️';position:absolute;top:8px;right:14px;font-size:22px;}
 
-#ble-btn.connected{
-  background:#0F6E56;
-}
+#field-mons{position:absolute;bottom:0;left:0;right:0;height:100%;pointer-events:none;}
+.field-mon{position:absolute;bottom:30px;text-align:center;animation:monBob 2.5s ease-in-out infinite;}
+.field-mon img{width:56px;height:56px;image-rendering:pixelated;filter:drop-shadow(0 3px 6px #0009);}
+.field-mon .field-name{font-size:9px;color:#fff;text-shadow:0 1px 3px #000a;font-weight:700;white-space:nowrap;}
+@keyframes monBob{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
 
-/* MAIN CONTENT */
-#main-area{
-  flex:1;
-  min-height:0;
-  display:flex;
-  flex-direction:column;
-  padding:12px 14px;
-  gap:10px;
-  overflow-y:auto;
-}
+/* BOTTOM HUD */
+#bottom-hud{flex-shrink:0;background:#0f1117;border-top:2px solid #FFD70033;display:flex;flex-direction:column;}
 
-/* PARTY GRID */
-#party-grid{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:8px;
-}
+/* INFO STRIP */
+#info-strip{display:flex;gap:6px;padding:6px 10px;border-bottom:1px solid #ffffff0a;}
+#node-count{background:#0a0d14;border-radius:8px;padding:5px 10px;font-size:10px;color:#aaa;border:1px solid #ffffff11;display:flex;align-items:center;gap:5px;}
+#node-count span{font-size:14px;font-weight:700;color:#1D9E75;}
+#ball-strip{flex:1;display:flex;align-items:center;gap:4px;overflow:hidden;}
+.ball-pip{display:flex;align-items:center;gap:2px;font-size:10px;font-weight:600;white-space:nowrap;}
+.ball-pip img{width:16px;height:16px;image-rendering:pixelated;}
+#btn-scan{margin-left:auto;background:#1a3a8f;border:none;color:#fff;padding:5px 10px;border-radius:8px;font-size:10px;font-weight:600;cursor:pointer;}
 
-.party-card{
-  background:#0f1117;
-  border:2px solid #ffffff15;
-  border-radius:12px;
-  padding:8px;
-  text-align:center;
-  cursor:pointer;
-  transition:border .2s;
-}
+/* BOTTOM NAV */
+#bottom-nav{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border-top:1px solid #ffffff11;}
+.nav-btn{background:none;border:none;color:#666;padding:10px 4px 8px;font-size:10px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;transition:color .15s;}
+.nav-btn .nav-icon{font-size:18px;}
+.nav-btn.active{color:#FFD700;}
 
-.party-card.active{
-  border-color:#FFD700;
-}
+/* ── MAP OVERLAY ── */
+#map-overlay{position:absolute;inset:0;z-index:100;}
+#map-overlay.hidden{display:none;}
+#map-overlay #map{position:absolute;inset:0;}
+#map-close-btn{position:absolute;top:10px;right:10px;z-index:101;background:#0f1117cc;border:1px solid #ffffff33;color:#fff;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;}
+#node-toast{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:#1D9E75dd;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;z-index:102;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;}
+#node-toast.show{opacity:1;}
 
-.party-card.fainted{
-  opacity:.4;
-}
+/* ── ENCOUNTER OVERLAY ── */
+#encounter{position:absolute;inset:0;z-index:150;background:linear-gradient(160deg,#1a1a2e,#0f3460);display:flex;flex-direction:column;align-items:center;padding:14px;overflow-y:auto;}
+#enc-title{font-size:12px;color:#aaa;margin-bottom:2px;flex-shrink:0;}
+#enc-name{font-size:20px;font-weight:800;color:#FFD700;flex-shrink:0;}
+#enc-meta{font-size:11px;color:#888;margin-bottom:8px;flex-shrink:0;}
+#battle-scene{width:100%;max-width:360px;height:170px;background:linear-gradient(#87CEEB 0%,#87CEEB 55%,#90EE90 55%);border-radius:14px;position:relative;overflow:hidden;margin-bottom:8px;flex-shrink:0;}
+#wild-platform{position:absolute;top:12px;right:14px;}
+#wild-sprite{width:88px;height:88px;image-rendering:pixelated;filter:drop-shadow(0 4px 8px #0008);}
+#wild-sprite.shiny{filter:drop-shadow(0 0 14px #FFD700) drop-shadow(0 4px 8px #0008);}
+#player-platform{position:absolute;bottom:6px;left:14px;}
+#player-battle-sprite{width:72px;height:72px;image-rendering:pixelated;transform:scaleX(-1);filter:drop-shadow(0 4px 8px #0008);}
+.battle-hud{width:100%;max-width:360px;margin-bottom:5px;flex-shrink:0;}
+.hud-row{display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;}
+.hud-bar{height:7px;background:#2a2d3a;border-radius:4px;overflow:hidden;}
+.hud-fill{height:100%;border-radius:4px;transition:width .4s;}
+.hud-fill.green{background:#1D9E75;}.hud-fill.yellow{background:#EF9F27;}.hud-fill.red{background:#e24b4a;}
+#battle-log{width:100%;max-width:360px;background:#0008;border-radius:10px;padding:8px 12px;font-size:13px;color:#ddd;min-height:38px;margin-bottom:8px;border:1px solid #ffffff11;flex-shrink:0;}
 
-.party-card img{
-  width:52px;
-  height:52px;
-  image-rendering:pixelated;
-}
+/* MOVE GRID */
+#move-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;width:100%;max-width:360px;margin-bottom:6px;flex-shrink:0;}
+.move-btn{padding:9px 6px;border-radius:10px;border:none;font-size:11px;font-weight:700;cursor:pointer;text-align:center;color:#fff;line-height:1.3;}
+.move-btn:disabled{opacity:.4;cursor:default;}
+.move-btn small{display:block;font-size:9px;opacity:.75;margin-top:1px;}
+/* type colours */
+.t-normal{background:#7a7050;}.t-fire{background:#b03010;}.t-water{background:#1060aa;}.t-grass{background:#2a7020;}.t-electric{background:#908000;}.t-psychic{background:#880060;}.t-ghost{background:#3a2870;}.t-ice{background:#207888;}.t-fighting{background:#6a1808;}.t-poison{background:#602060;}.t-ground{background:#786020;}.t-rock{background:#706028;}.t-dragon{background:#3828a8;}.t-dark{background:#303030;}.t-steel{background:#486070;}.t-fairy{background:#904070;}.t-flying{background:#406090;}.t-bug{background:#506818;}.t-other{background:#2a2d3a;}
 
-.party-card .pname{
-  font-size:11px;
-  font-weight:600;
-  margin-top:2px;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
+/* BALL PICKER TRAY */
+#ball-tray{width:100%;max-width:360px;background:#0f1117;border:1px solid #ffffff22;border-radius:12px;padding:8px;margin-bottom:6px;flex-shrink:0;}
+#ball-tray-title{font-size:10px;color:#aaa;margin-bottom:6px;}
+#ball-tray-grid{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+.ball-choice{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:6px 10px;border-radius:10px;border:1px solid #ffffff22;background:#1a1a2e;font-size:10px;font-weight:600;}
+.ball-choice img{width:28px;height:28px;image-rendering:pixelated;}
+.ball-choice .bc-count{color:#aaa;font-size:9px;}
+.ball-choice.empty{opacity:.35;pointer-events:none;}
+.ball-choice:active{border-color:#FFD700;}
 
-.party-card .hp-bar{
-  height:4px;
-  background:#2a2d3a;
-  border-radius:2px;
-  margin-top:4px;
-}
+/* BATTLE ACTION BAR */
+#battle-action-bar{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;width:100%;max-width:360px;flex-shrink:0;}
+#battle-action-bar button{padding:10px;border-radius:12px;border:none;font-size:12px;font-weight:600;cursor:pointer;}
+#btn-catch{background:#FFD700;color:#000;}
+#btn-run{background:#2a2d3a;color:#aaa;}
+#btn-swap{background:#1a3a8f;color:#fff;}
 
-.party-card .hp-fill{
-  height:100%;
-  border-radius:2px;
-  transition:width .3s;
-}
+/* ── MODAL BASE ── */
+.modal{position:absolute;inset:0;z-index:160;background:#0f1117;display:flex;flex-direction:column;}
+.modal-header{display:flex;align-items:center;padding:12px 14px;background:#0a0d14;border-bottom:1px solid #ffffff11;flex-shrink:0;}
+.modal-header h2{flex:1;font-size:16px;font-weight:800;color:#FFD700;}
+.modal-close{background:none;border:1px solid #333;color:#aaa;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer;}
+.modal-body{flex:1;overflow-y:auto;padding:12px;}
 
-/* INFO ROW */
-#info-row{
-  display:flex;
-  gap:8px;
-}
+/* ── STORAGE MODAL ── */
+#storage-modal .section-label{font-size:10px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.06em;margin:10px 0 6px;}
+#storage-modal .ball-shelf{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px;}
+.ball-shelf-item{display:flex;align-items:center;gap:4px;background:#1a1a2e;border:1px solid #ffffff15;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;}
+.ball-shelf-item img{width:22px;height:22px;image-rendering:pixelated;}
+.ball-shelf-item.zero{opacity:.35;}
+#pc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+.pc-card{background:#1a1a2e;border:1px solid #ffffff15;border-radius:10px;padding:6px;text-align:center;}
+.pc-card img{width:44px;height:44px;image-rendering:pixelated;}
+.pc-card .pc-name{font-size:9px;font-weight:600;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
-#node-count{
-  flex:1;
-  background:#0f1117;
-  border-radius:10px;
-  padding:10px;
-  font-size:12px;
-  color:#aaa;
-  border:1px solid #ffffff11;
-}
+/* ── POKÉDEX MODAL ── */
+#dex-filter-bar{display:flex;gap:6px;padding:10px 12px;background:#0a0d14;border-bottom:1px solid #ffffff0a;flex-shrink:0;overflow-x:auto;}
+.dex-filter-btn{background:#1a1a2e;border:1px solid #ffffff22;color:#aaa;padding:4px 10px;border-radius:20px;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;}
+.dex-filter-btn.on{background:#FFD70033;border-color:#FFD700;color:#FFD700;}
+#dex-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.dex-card{background:#1a1a2e;border:1px solid #ffffff15;border-radius:10px;padding:8px;text-align:center;}
+.dex-card.shiny-dex{border-color:#FFD70077;}
+.dex-card img{width:52px;height:52px;image-rendering:pixelated;}
+.dex-card .dc-name{font-size:10px;font-weight:700;margin-top:3px;}
+.dex-card .dc-lvl{font-size:9px;color:#666;margin-top:1px;}
+.dex-empty{text-align:center;color:#444;font-size:13px;padding:40px 20px;}
 
-#node-count span{
-  display:block;
-  font-size:20px;
-  font-weight:700;
-  color:#1D9E75;
-}
+/* ── CAUGHT POPUP ── */
+#caught-popup{position:absolute;inset:0;z-index:165;background:#000d;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;}
+#caught-popup h2{font-size:24px;font-weight:800;color:#FFD700;margin-bottom:6px;}
+#caught-popup img.caught-sprite{width:100px;height:100px;image-rendering:pixelated;margin-bottom:8px;}
+#caught-popup p{font-size:13px;color:#aaa;margin-bottom:4px;text-align:center;}
+#drop-display{display:flex;gap:10px;align-items:center;justify-content:center;margin:10px 0;}
+.drop-ball{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.drop-ball img{width:32px;height:32px;image-rendering:pixelated;}
+.drop-ball span{font-size:9px;color:#FFD700;font-weight:700;}
+#caught-popup button{background:#1D9E75;color:#fff;border:none;padding:12px 36px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;margin-top:6px;}
 
-#gps-box{
-  flex:1;
-  background:#0f1117;
-  border-radius:10px;
-  padding:10px;
-  font-size:11px;
-  color:#aaa;
-  border:1px solid #ffffff11;
-  display:flex;
-  flex-direction:column;
-  gap:4px;
-}
+/* ── FAINT SCREEN ── */
+#faint-screen{position:absolute;inset:0;z-index:170;background:#000e;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+#faint-screen h2{font-size:22px;font-weight:800;color:#e24b4a;margin-bottom:10px;}
+#faint-screen p{font-size:13px;color:#aaa;margin-bottom:20px;}
+#faint-timer{font-size:48px;font-weight:800;color:#FFD700;}
+#faint-sub{font-size:12px;color:#888;margin-top:6px;}
 
-#gps-status-dot{
-  display:inline-block;
-  width:7px;
-  height:7px;
-  border-radius:50%;
-  background:#e24b4a;
-  margin-right:4px;
-  vertical-align:middle;
-}
-
-#gps-status-dot.active{
-  background:#1D9E75;
-}
-
-#gps-coords{
-  font-size:10px;
-  color:#666;
-  word-break:break-all;
-}
-
-#btn-refresh-gps{
-  background:#1a3a8f;
-  border:none;
-  color:#fff;
-  padding:4px 8px;
-  border-radius:6px;
-  font-size:10px;
-  cursor:pointer;
-  align-self:flex-start;
-}
-
-/* ACTION BUTTONS */
-#action-row{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px;
-}
-
-#action-row button{
-  padding:10px;
-  border-radius:10px;
-  border:none;
-  font-size:12px;
-  font-weight:600;
-  cursor:pointer;
-  color:#fff;
-}
-
-#btn-scan{
-  background:#1a3a8f;
-}
-
-#btn-drain{
-  background:#2a2d3a;
-}
-
-/* ── MAP PANEL ── */
-#map-panel{
-  height:38vh;
-  min-height:220px;
-  position:relative;
-  border-top:2px solid #FFD70033;
-  flex-shrink:0;
-}
-
-#map{
-  position:absolute;
-  inset:0;
-}
-
-#node-toast{
-  position:absolute;
-  top:8px;
-  left:50%;
-  transform:translateX(-50%);
-  background:#1D9E75dd;
-  padding:6px 14px;
-  border-radius:20px;
-  font-size:12px;
-  font-weight:600;
-  z-index:10;
-  opacity:0;
-  transition:opacity .3s;
-  pointer-events:none;
-  white-space:nowrap;
-}
-
-#node-toast.show{
-  opacity:1;
-}
+/* ── ANIMS ── */
+@keyframes attackSlide{0%{transform:scaleX(-1) translateX(0);}50%{transform:scaleX(-1) translateX(55px);}100%{transform:scaleX(-1) translateX(0);}}
+@keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);}}
+@keyframes flash{0%,100%{opacity:1;}50%{opacity:.15;}}
+@keyframes catchAnim{0%{transform:scale(1);}40%{transform:scale(0.1);}100%{transform:scale(0);}}
+.anim-attack{animation:attackSlide .4s ease;}
+.anim-shake{animation:shake .3s ease;}
+.anim-flash{animation:flash .35s ease 3;}
 </style>
+</head>
+<body>
+
+<!-- ── STARTER ── -->
+<div id="starter-screen">
+  <h1>⚡ PokéMesh</h1>
+  <p>Choose your starter — each has an 8% shiny chance</p>
+  <div class="starter-grid" id="starter-grid"></div>
+</div>
+
+<!-- ── LOCATION ── -->
+<div id="location-screen" class="hidden">
+  <div class="loc-icon">📍</div>
+  <h2>Enable Location</h2>
+  <p>PokéMesh uses your GPS to show you on the map, detect landmarks, and spawn wild Pokémon nearby.</p>
+  <p class="loc-note">Tap Allow then choose <strong>Allow</strong> when your iPhone asks.</p>
+  <button id="btn-allow-location">📍 Allow Location</button>
+  <button id="btn-skip-location">Skip for now</button>
+  <div id="location-status"></div>
+</div>
+
+<!-- ── MAIN GAME ── -->
+<div id="game-screen" class="hidden">
+
+  <!-- topbar -->
+  <div id="topbar">
+    <span class="logo">⚡ PokéMesh</span>
+    <button id="ble-btn">🔵 BLE</button>
+  </div>
+
+  <!-- gps bar -->
+  <div id="gps-bar">
+    <div id="gps-dot"></div>
+    <span id="gps-txt">GPS not set</span>
+    <button id="btn-gps-refresh">🔄</button>
+  </div>
+
+  <!-- field where party hangs out -->
+  <div id="field-area">
+    <div id="field-mons"></div>
+  </div>
+
+  <!-- bottom hud -->
+  <div id="bottom-hud">
+    <div id="info-strip">
+      <div id="node-count"><span id="node-num">0</span>Nodes</div>
+      <div id="ball-strip"></div>
+      <button id="btn-scan">📡 Scan</button>
+    </div>
+    <div id="bottom-nav">
+      <button class="nav-btn active" id="nav-field" onclick="showView('field')">
+        <span class="nav-icon">🌿</span>Field
+      </button>
+      <button class="nav-btn" id="nav-map" onclick="showView('map')">
+        <span class="nav-icon">🗺️</span>Map
+      </button>
+      <button class="nav-btn" id="nav-storage" onclick="showView('storage')">
+        <span class="nav-icon">📦</span>Storage
+      </button>
+      <button class="nav-btn" id="nav-dex" onclick="showView('dex')">
+        <span class="nav-icon">📖</span>Pokédex
+      </button>
+    </div>
+  </div>
+
+  <!-- MAP OVERLAY (shown when nav-map active) -->
+  <div id="map-overlay" class="hidden">
+    <div id="map"></div>
+    <button id="map-close-btn" onclick="showView('field')">✕</button>
+    <div id="node-toast">📡 Node!</div>
+  </div>
+
+  <!-- ENCOUNTER OVERLAY (covers everything) -->
+  <div id="encounter" class="hidden">
+    <div id="enc-title">A wild Pokémon appeared!</div>
+    <div id="enc-name"></div>
+    <div id="enc-meta"></div>
+    <div class="battle-hud">
+      <div class="hud-row"><span id="wild-label">Wild</span><span id="wild-hp-text"></span></div>
+      <div class="hud-bar"><div class="hud-fill green" id="wild-hp-fill" style="width:100%"></div></div>
+    </div>
+    <div id="battle-scene">
+      <div id="wild-platform"><img id="wild-sprite" src="" alt="wild"/></div>
+      <div id="player-platform"><img id="player-battle-sprite" src="" alt="player"/></div>
+    </div>
+    <div class="battle-hud">
+      <div class="hud-row"><span id="player-label">Your Pokémon</span><span id="player-hp-text"></span></div>
+      <div class="hud-bar"><div class="hud-fill green" id="player-hp-fill" style="width:100%"></div></div>
+    </div>
+    <div id="battle-log">What will you do?</div>
+    <div id="move-grid"></div>
+    <div id="ball-tray" class="hidden">
+      <div id="ball-tray-title">Choose a Poké Ball:</div>
+      <div id="ball-tray-grid"></div>
+    </div>
+    <div id="battle-action-bar">
+      <button id="btn-catch">🟡 Ball</button>
+      <button id="btn-run">🏃 Run</button>
+      <button id="btn-swap">🔄 Swap</button>
+    </div>
+  </div>
+
+  <!-- CAUGHT POPUP -->
+  <div id="caught-popup" class="hidden">
+    <h2>Gotcha! 🎉</h2>
+    <img class="caught-sprite" id="caught-img" src="" alt="caught"/>
+    <p id="caught-msg"></p>
+    <p id="caught-pc-msg" style="font-size:11px;color:#FFD700;"></p>
+    <div id="drop-display"></div>
+    <button id="caught-ok">Continue</button>
+  </div>
+
+  <!-- FAINT SCREEN -->
+  <div id="faint-screen" class="hidden">
+    <h2>💀 All Pokémon Fainted!</h2>
+    <p>Recovering at the Pokémon Center...</p>
+    <div id="faint-timer">60</div>
+    <div id="faint-sub">seconds</div>
+  </div>
+
+  <!-- STORAGE MODAL -->
+  <div id="storage-modal" class="modal hidden">
+    <div class="modal-header">
+      <h2>📦 PC Storage</h2>
+      <button class="modal-close" onclick="showView('field')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="section-label">Poké Balls</div>
+      <div class="ball-shelf" id="ball-shelf"></div>
+      <div class="section-label">Stored Pokémon</div>
+      <div id="pc-grid"></div>
+    </div>
+  </div>
+
+  <!-- POKÉDEX MODAL -->
+  <div id="dex-modal" class="modal hidden">
+    <div class="modal-header">
+      <h2>📖 Pokédex</h2>
+      <button class="modal-close" onclick="showView('field')">✕</button>
+    </div>
+    <div id="dex-filter-bar">
+      <button class="dex-filter-btn on" data-filter="all">All</button>
+      <button class="dex-filter-btn" data-filter="shiny">✨ Shiny</button>
+    </div>
+    <div class="modal-body">
+      <div id="dex-grid"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════
+const BATTLE_COOLDOWN_MS = 20000;
+const LANDMARK_RADIUS_M  = 150;
+const SHINY_CHANCE       = 0.08;
+const FAINT_RECOVER_SECS = 60;
+const PARTY_MAX          = 5;   // max active party size
+const SAVE_KEY           = 'pokemesh_v3';
+
+const LANDMARKS = [
+  {name:'Space Needle',   lat:47.6205, lng:-122.3493, special:93 },
+  {name:'Local 418',      lat:47.6237, lng:-122.3246, special:122},
+  {name:'Rainier Square', lat:47.6080, lng:-122.3359, special:130},
+];
+
+const STARTERS = [
+  {id:1,  name:'Bulbasaur',  type:'Grass/Poison'},
+  {id:4,  name:'Charmander', type:'Fire'},
+  {id:7,  name:'Squirtle',   type:'Water'},
+  {id:25, name:'Pikachu',    type:'Electric'},
+  {id:133,name:'Eevee',      type:'Normal'},
+  {id:122,name:'Mr. Mime',   type:'Psychic/Fairy'},
+];
+
+const COMMON   = [16,19,21,23,27,29,32,41,43,46,48,52,54,56,58,60,63,66,69,72,74,77,79,81,84,86,88,90,96,98,100,102,104,109,111,116,118,120,129,147];
+const UNCOMMON = [64,67,75,80,82,85,87,89,91,93,94,95,97,99,101,103,105,106,107,108,112,113,114,115,117,119,121,128,130,131,132,134,135,136,138,139,140,141,142,143,148];
+
+// ═══════════════════════════════════════════════════
+// POKÉBALLS — sprites from PokéAPI item images
+// ═══════════════════════════════════════════════════
+const BALLS = {
+  poke:  {name:'Poké Ball',   img:'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png',   catchMult:1.0, weight:55},
+  great: {name:'Great Ball',  img:'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/great-ball.png',  catchMult:1.5, weight:28},
+  ultra: {name:'Ultra Ball',  img:'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png',  catchMult:2.0, weight:12},
+  master:{name:'Master Ball', img:'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/master-ball.png', catchMult:999, weight:1},
+};
+const BALL_KEYS = Object.keys(BALLS);
+const DROP_WEIGHT_TOTAL = BALL_KEYS.reduce((s,k)=>s+BALLS[k].weight, 0);
+
+// Roll 0-3 balls as a drop — rarer balls less likely
+function rollDrops() {
+  const count = Math.floor(Math.random()*4); // 0,1,2,3
+  const drops = [];
+  for(let i=0;i<count;i++){
+    let r = Math.random()*DROP_WEIGHT_TOTAL, key='poke';
+    for(const k of BALL_KEYS){ r-=BALLS[k].weight; if(r<=0){key=k;break;} }
+    drops.push(key);
+  }
+  return drops; // may be empty
+}
+
+// ═══════════════════════════════════════════════════
+// MOVES DATABASE
+// ═══════════════════════════════════════════════════
+const MOVES = {
+  tackle:       {name:'Tackle',        type:'normal',   power:40,pp:35},
+  scratch:      {name:'Scratch',       type:'normal',   power:40,pp:35},
+  pound:        {name:'Pound',         type:'normal',   power:40,pp:35},
+  quick_attack: {name:'Quick Attack',  type:'normal',   power:40,pp:30},
+  body_slam:    {name:'Body Slam',     type:'normal',   power:85,pp:15},
+  headbutt:     {name:'Headbutt',      type:'normal',   power:70,pp:15},
+  bite:         {name:'Bite',          type:'dark',     power:60,pp:25},
+  crunch:       {name:'Crunch',        type:'dark',     power:80,pp:15},
+  ember:        {name:'Ember',         type:'fire',     power:40,pp:25},
+  fire_fang:    {name:'Fire Fang',     type:'fire',     power:65,pp:15},
+  flamethrower: {name:'Flamethrower',  type:'fire',     power:90,pp:15},
+  flame_wheel:  {name:'Flame Wheel',   type:'fire',     power:60,pp:25},
+  water_gun:    {name:'Water Gun',     type:'water',    power:40,pp:25},
+  bubble:       {name:'Bubble',        type:'water',    power:40,pp:30},
+  surf:         {name:'Surf',          type:'water',    power:90,pp:15},
+  aqua_tail:    {name:'Aqua Tail',     type:'water',    power:90,pp:10},
+  waterfall:    {name:'Waterfall',     type:'water',    power:80,pp:15},
+  vine_whip:    {name:'Vine Whip',     type:'grass',    power:45,pp:25},
+  razor_leaf:   {name:'Razor Leaf',    type:'grass',    power:55,pp:25},
+  seed_bomb:    {name:'Seed Bomb',     type:'grass',    power:80,pp:15},
+  thundershock: {name:'Thundershock',  type:'electric', power:40,pp:30},
+  thunder_fang: {name:'Thunder Fang',  type:'electric', power:65,pp:15},
+  spark:        {name:'Spark',         type:'electric', power:65,pp:20},
+  thunderbolt:  {name:'Thunderbolt',   type:'electric', power:90,pp:15},
+  confusion:    {name:'Confusion',     type:'psychic',  power:50,pp:25},
+  psybeam:      {name:'Psybeam',       type:'psychic',  power:65,pp:20},
+  psychic_m:    {name:'Psychic',       type:'psychic',  power:90,pp:10},
+  lick:         {name:'Lick',          type:'ghost',    power:30,pp:30},
+  shadow_ball:  {name:'Shadow Ball',   type:'ghost',    power:80,pp:15},
+  hex:          {name:'Hex',           type:'ghost',    power:65,pp:10},
+  ice_shard:    {name:'Ice Shard',     type:'ice',      power:40,pp:30},
+  icy_wind:     {name:'Icy Wind',      type:'ice',      power:55,pp:15},
+  blizzard:     {name:'Blizzard',      type:'ice',      power:110,pp:5},
+  karate_chop:  {name:'Karate Chop',   type:'fighting', power:50,pp:25},
+  low_kick:     {name:'Low Kick',      type:'fighting', power:50,pp:20},
+  poison_sting: {name:'Poison Sting',  type:'poison',   power:15,pp:35},
+  sludge:       {name:'Sludge',        type:'poison',   power:65,pp:20},
+  acid:         {name:'Acid',          type:'poison',   power:40,pp:30},
+  mud_slap:     {name:'Mud-Slap',      type:'ground',   power:20,pp:10},
+  earthquake:   {name:'Earthquake',    type:'ground',   power:100,pp:10},
+  rock_throw:   {name:'Rock Throw',    type:'rock',     power:50,pp:15},
+  rock_slide:   {name:'Rock Slide',    type:'rock',     power:75,pp:10},
+  dragon_rage:  {name:'Dragon Rage',   type:'dragon',   power:40,pp:10},
+  dragon_claw:  {name:'Dragon Claw',   type:'dragon',   power:80,pp:15},
+  wing_attack:  {name:'Wing Attack',   type:'flying',   power:60,pp:35},
+  aerial_ace:   {name:'Aerial Ace',    type:'flying',   power:60,pp:20},
+  bug_bite:     {name:'Bug Bite',      type:'bug',      power:60,pp:20},
+  iron_tail:    {name:'Iron Tail',     type:'steel',    power:100,pp:15},
+  metal_claw:   {name:'Metal Claw',    type:'steel',    power:50,pp:35},
+};
+
+const MOVESETS = {
+  1:[  'tackle','vine_whip','razor_leaf','body_slam'],
+  4:[  'scratch','ember','fire_fang','flame_wheel'],
+  7:[  'tackle','water_gun','bubble','aqua_tail'],
+  25:[ 'thundershock','quick_attack','thunder_fang','thunderbolt'],
+  133:['tackle','quick_attack','bite','body_slam'],
+  122:['pound','confusion','psybeam','psychic_m'],
+  16:[ 'tackle','quick_attack','wing_attack','aerial_ace'],
+  19:[ 'scratch','quick_attack','bite','body_slam'],
+  21:[ 'tackle','wing_attack','aerial_ace','quick_attack'],
+  23:[ 'poison_sting','bite','acid','crunch'],
+  41:[ 'tackle','bite','wing_attack','crunch'],
+  43:[ 'tackle','vine_whip','acid','sludge'],
+  46:[ 'bug_bite','vine_whip','acid','body_slam'],
+  52:[ 'scratch','bite','metal_claw','crunch'],
+  54:[ 'scratch','water_gun','bubble','aqua_tail'],
+  56:[ 'scratch','karate_chop','low_kick','body_slam'],
+  58:[ 'bite','ember','fire_fang','crunch'],
+  60:[ 'scratch','bubble','water_gun','body_slam'],
+  63:[ 'pound','confusion','psybeam','psychic_m'],
+  66:[ 'pound','karate_chop','low_kick','body_slam'],
+  69:[ 'vine_whip','acid','sludge','razor_leaf'],
+  72:[ 'water_gun','bubble','acid','surf'],
+  74:[ 'tackle','mud_slap','rock_throw','rock_slide'],
+  77:[ 'ember','fire_fang','flame_wheel','body_slam'],
+  81:[ 'thundershock','thunder_fang','spark','thunderbolt'],
+  88:[ 'pound','acid','sludge','body_slam'],
+  90:[ 'tackle','water_gun','icy_wind','blizzard'],
+  93:[ 'lick','shadow_ball','hex','psychic_m'],
+  94:[ 'lick','shadow_ball','hex','psychic_m'],
+  96:[ 'pound','confusion','psybeam','headbutt'],
+  109:['tackle','acid','sludge','body_slam'],
+  116:['water_gun','bubble','aqua_tail','surf'],
+  120:['tackle','water_gun','bubble','surf'],
+  129:['tackle','water_gun','aqua_tail','body_slam'],
+  130:['bite','aqua_tail','waterfall','dragon_rage'],
+  131:['water_gun','surf','ice_shard','blizzard'],
+  147:['tackle','dragon_rage','bite','dragon_claw'],
+};
+const GENERIC_SET = ['tackle','scratch','headbutt','body_slam'];
+
+function getMoveset(id){
+  return (MOVESETS[id]||GENERIC_SET).map(k=>({...(MOVES[k]||MOVES.tackle), currentPP:(MOVES[k]||MOVES.tackle).pp}));
+}
+
+// ═══════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════
+let playerParty = [];   // active party (max PARTY_MAX)
+let pcBox       = [];   // overflow storage
+let caughtDex   = [];   // full Pokédex history (all catches ever)
+let playerBalls = {poke:5, great:0, ultra:0, master:0};
+let knownNodes  = {};
+let activeSlot  = 0;
+let lastBattleTime = 0, inBattle = false;
+let wildMon=null, wildHP=0, wildMaxHP=0, playerHP=0, playerMaxHP=0;
+let playerPos=null, watchId=null, map=null, playerMarker=null;
+let bleConnected=false, device, server, fromRadioChar, fromNumChar, toRadioChar;
+let ballTrayOpen = false;
+let currentView  = 'field';
+let dexFilter    = 'all';
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+// ═══════════════════════════════════════════════════
+// SPRITES
+// ═══════════════════════════════════════════════════
+const spriteUrl = id=>`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
+const shinyUrl  = id=>`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${id}.png`;
+const backUrl   = id=>`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${id}.png`;
+
+// ═══════════════════════════════════════════════════
+// SAVE / LOAD
+// ═══════════════════════════════════════════════════
+function saveGame(){
+  const data={
+    playerParty: playerParty.map(stripRuntime),
+    pcBox:       pcBox.map(stripRuntime),
+    caughtDex:   caughtDex.map(stripRuntime),
+    playerBalls, knownNodes, savedAt:Date.now()
+  };
+  try{ localStorage.setItem(SAVE_KEY, JSON.stringify(data)); showToast('💾 Saved!'); }
+  catch(e){ alert('Save failed.'); }
+}
+
+function stripRuntime(m){
+  // Don't serialise DOM-only or redundant sprite strings — reconstruct on load
+  return {id:m.id,name:m.name,isShiny:m.isShiny,level:m.level,hp:m.hp,maxHP:m.maxHP};
+}
+
+function hydrateMon(m){
+  return {...m, sprite:m.isShiny?shinyUrl(m.id):spriteUrl(m.id), back:backUrl(m.id), moves:getMoveset(m.id)};
+}
+
+function loadSave(){
+  try{ return JSON.parse(localStorage.getItem(SAVE_KEY)||'null'); }
+  catch(e){ return null; }
+}
+
+// ═══════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════
+(function boot(){
+  const save = loadSave();
+  if(save && save.playerParty && save.playerParty.length){
+    playerParty  = save.playerParty.map(hydrateMon);
+    pcBox        = (save.pcBox||[]).map(hydrateMon);
+    caughtDex    = (save.caughtDex||[]).map(hydrateMon);
+    playerBalls  = {...{poke:5,great:0,ultra:0,master:0}, ...save.playerBalls};
+    knownNodes   = save.knownNodes||{};
+    activeSlot   = Math.min(save.activeSlot||0, playerParty.length-1);
+    // skip starter, go straight to location
+    document.getElementById('location-screen').classList.remove('hidden');
+  } else {
+    buildStarterGrid();
+    document.getElementById('starter-screen').classList.remove('hidden');
+  }
+})();
+
+function buildStarterGrid(){
+  const g=document.getElementById('starter-grid'); g.innerHTML='';
+  STARTERS.forEach(s=>{
+    const shiny=Math.random()<SHINY_CHANCE;
+    const url=shiny?shinyUrl(s.id):spriteUrl(s.id);
+    const c=document.createElement('div'); c.className='starter-card';
+    c.innerHTML=`<img src="${url}"/><div class="sname">${s.name}</div><div class="stype">${s.type}</div>${shiny?'<span class="shiny-badge">✨ SHINY</span>':''}`;
+    c.onclick=()=>pickStarter(s,shiny);
+    g.appendChild(c);
+  });
+}
+
+function pickStarter(s,shiny){
+  playerParty=[makeMon(s.id,s.name,shiny,true)];
+  playerBalls={poke:5,great:0,ultra:0,master:0};
+  document.getElementById('starter-screen').classList.add('hidden');
+  document.getElementById('location-screen').classList.remove('hidden');
+}
+
+// ═══════════════════════════════════════════════════
+// LOCATION
+// ═══════════════════════════════════════════════════
+document.getElementById('btn-allow-location').onclick=function(){
+  const st=document.getElementById('location-status'), btn=this;
+  btn.textContent='⏳ Requesting…'; btn.disabled=true; st.textContent='';
+  if(!navigator.geolocation){st.textContent='❌ Not supported';btn.textContent='📍 Allow';btn.disabled=false;return;}
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      playerPos={lat:pos.coords.latitude,lng:pos.coords.longitude};
+      st.textContent='✅ Got it!'; btn.textContent='✅ Enabled';
+      startWatch();
+      setTimeout(launchGame,800);
+    },
+    err=>{
+      btn.textContent='📍 Allow Location'; btn.disabled=false;
+      st.textContent=err.code===1?'❌ Denied — check Settings':err.code===2?'❌ Unavailable':'❌ Timed out';
+    },
+    {enableHighAccuracy:true,timeout:15000,maximumAge:0}
+  );
+};
+document.getElementById('btn-skip-location').onclick=()=>launchGame();
+
+function startWatch(){
+  if(!navigator.geolocation) return;
+  if(watchId!=null) navigator.geolocation.clearWatch(watchId);
+  watchId=navigator.geolocation.watchPosition(
+    pos=>{
+      playerPos={lat:pos.coords.latitude,lng:pos.coords.longitude};
+      document.getElementById('gps-dot').classList.add('active');
+      document.getElementById('gps-txt').textContent=`${pos.coords.latitude.toFixed(4)},${pos.coords.longitude.toFixed(4)} ±${Math.round(pos.coords.accuracy)}m`;
+      updateMapMarker(); checkLandmarks(pos.coords.latitude,pos.coords.longitude);
+    },
+    ()=>{document.getElementById('gps-dot').classList.remove('active');document.getElementById('gps-txt').textContent='Signal lost';},
+    {enableHighAccuracy:true,timeout:20000,maximumAge:5000}
+  );
+}
+
+document.getElementById('btn-gps-refresh').onclick=function(){
+  if(!navigator.geolocation){document.getElementById('gps-txt').textContent='Not supported';return;}
+  document.getElementById('gps-txt').textContent='Refreshing…';
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      playerPos={lat:pos.coords.latitude,lng:pos.coords.longitude};
+      document.getElementById('gps-dot').classList.add('active');
+      document.getElementById('gps-txt').textContent=`${pos.coords.latitude.toFixed(4)},${pos.coords.longitude.toFixed(4)}`;
+      updateMapMarker(); if(map) map.setView([pos.coords.latitude,pos.coords.longitude],16);
+      startWatch();
+    },
+    ()=>document.getElementById('gps-txt').textContent='Failed',
+    {enableHighAccuracy:true,timeout:15000,maximumAge:0}
+  );
+};
+
+// ═══════════════════════════════════════════════════
+// LAUNCH
+// ═══════════════════════════════════════════════════
+function launchGame(){
+  document.getElementById('location-screen').classList.add('hidden');
+  document.getElementById('game-screen').classList.remove('hidden');
+  initMap();
+  renderField();
+  renderBallStrip();
+  document.getElementById('node-num').textContent=Object.keys(knownNodes).length;
+  if(playerPos&&map){ map.setView([playerPos.lat,playerPos.lng],16); updateMapMarker(); }
+}
+
+// ═══════════════════════════════════════════════════
+// VIEW ROUTER
+// ═══════════════════════════════════════════════════
+function showView(v){
+  currentView=v;
+  // hide all overlays
+  document.getElementById('map-overlay').classList.add('hidden');
+  document.getElementById('storage-modal').classList.add('hidden');
+  document.getElementById('dex-modal').classList.add('hidden');
+  // reset nav
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+
+  if(v==='field'){
+    document.getElementById('nav-field').classList.add('active');
+  } else if(v==='map'){
+    document.getElementById('map-overlay').classList.remove('hidden');
+    document.getElementById('nav-map').classList.add('active');
+    if(map) setTimeout(()=>map.invalidateSize(),50);
+  } else if(v==='storage'){
+    renderStorageModal();
+    document.getElementById('storage-modal').classList.remove('hidden');
+    document.getElementById('nav-storage').classList.add('active');
+  } else if(v==='dex'){
+    renderDexModal();
+    document.getElementById('dex-modal').classList.remove('hidden');
+    document.getElementById('nav-dex').classList.add('active');
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// FIELD — party chilling in the grass
+// ═══════════════════════════════════════════════════
+const FIELD_X_POSITIONS = ['8%','23%','40%','57%','74%'];
+const FIELD_BOB_DELAYS  = ['0s','0.5s','1.1s','0.3s','0.8s'];
+
+function renderField(){
+  const container=document.getElementById('field-mons');
+  container.innerHTML='';
+  // show only the active party (max 5)
+  playerParty.slice(0,PARTY_MAX).forEach((mon,i)=>{
+    const div=document.createElement('div');
+    div.className='field-mon';
+    div.style.left=FIELD_X_POSITIONS[i]||`${8+i*18}%`;
+    div.style.animationDelay=FIELD_BOB_DELAYS[i]||'0s';
+    const fainted=mon.hp<=0;
+    div.style.opacity=fainted?'0.35':'1';
+    div.style.filter=fainted?'grayscale(1)':'none';
+    div.innerHTML=`<img src="${mon.sprite}" alt="${mon.name}"/>
+      <div class="field-name">${mon.isShiny?'✨':''}${mon.name}${i===activeSlot?' ◀':''}</div>`;
+    div.onclick=()=>{ if(!fainted){activeSlot=i;renderField();} };
+    container.appendChild(div);
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// MAP
+// ═══════════════════════════════════════════════════
+function initMap(){
+  if(map) return;
+  const sv=playerPos?[playerPos.lat,playerPos.lng]:[47.6205,-122.3493];
+  map=L.map('map',{zoomControl:false,attributionControl:false}).setView(sv,14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+  LANDMARKS.forEach(lm=>{
+    L.marker([lm.lat,lm.lng],{icon:L.divIcon({className:'',html:`<div style="background:#FFD700;color:#000;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;box-shadow:0 2px 6px #0008">⭐ ${lm.name}</div>`,iconAnchor:[40,10]})}).addTo(map);
+  });
+}
+
+function updateMapMarker(){
+  if(!playerPos||!playerParty[activeSlot]||!map) return;
+  const icon=L.divIcon({className:'',html:`<img src="${playerParty[activeSlot].sprite}" style="width:32px;height:32px;image-rendering:pixelated;transform:scaleX(-1);filter:drop-shadow(0 2px 6px #0008)"/>`,iconAnchor:[16,32]});
+  if(!playerMarker){ playerMarker=L.marker([playerPos.lat,playerPos.lng],{icon}).addTo(map); }
+  else{ playerMarker.setLatLng([playerPos.lat,playerPos.lng]); playerMarker.setIcon(icon); }
+}
+
+// ═══════════════════════════════════════════════════
+// LANDMARKS
+// ═══════════════════════════════════════════════════
+function distM(la1,ln1,la2,ln2){
+  const R=6371000,dL=(la2-la1)*Math.PI/180,dG=(ln2-ln1)*Math.PI/180;
+  return R*2*Math.atan2(Math.sqrt(Math.sin(dL/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dG/2)**2),Math.sqrt(1-Math.sin(dL/2)**2-Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dG/2)**2));
+}
+
+function checkLandmarks(lat,lng){
+  LANDMARKS.forEach(lm=>{
+    if(distM(lat,lng,lm.lat,lm.lng)<LANDMARK_RADIUS_M){
+      playerParty.forEach(m=>m.hp=m.maxHP); renderField();
+      if(!lm._triggered){
+        lm._triggered=true;
+        setTimeout(()=>lm._triggered=false,BATTLE_COOLDOWN_MS*2);
+        showToast(`⭐ ${lm.name} — Special spawn!`);
+        setTimeout(()=>startEncounter(lm.special),2500);
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// SPAWN
+// ═══════════════════════════════════════════════════
+function maybeSpawnEncounter(forceId){
+  if(inBattle) return;
+  const now=Date.now();
+  if(!forceId&&now-lastBattleTime<BATTLE_COOLDOWN_MS) return;
+  lastBattleTime=now;
+  startEncounter(forceId||null);
+}
+
+// ═══════════════════════════════════════════════════
+// MON FACTORY
+// ═══════════════════════════════════════════════════
+function makeMon(id,name,isShiny,isStarter){
+  const level=isStarter?5:Math.floor(Math.random()*15)+3;
+  const maxHP=20+level*3;
+  return {id,name,isShiny,level,hp:maxHP,maxHP,
+    sprite:isShiny?shinyUrl(id):spriteUrl(id), back:backUrl(id),
+    moves:getMoveset(id)};
+}
+
+async function randomMon(forceId){
+  const isShiny=Math.random()<0.05;
+  const pool=forceId?null:(Math.random()<0.25?UNCOMMON:COMMON);
+  const id=forceId||(pool[Math.floor(Math.random()*pool.length)]);
+  try{
+    const d=await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`).then(r=>r.json());
+    return makeMon(id, d.name.charAt(0).toUpperCase()+d.name.slice(1), isShiny, false);
+  }catch(e){ return makeMon(id,'Pokémon',isShiny,false); }
+}
+
+// ═══════════════════════════════════════════════════
+// ENCOUNTER
+// ═══════════════════════════════════════════════════
+async function startEncounter(forceId){
+  if(inBattle) return;
+  inBattle=true;
+  wildMon=await randomMon(forceId);
+  wildMaxHP=wildHP=wildMon.maxHP;
+  const active=playerParty[activeSlot];
+  playerMaxHP=active.maxHP; playerHP=active.hp;
+
+  document.getElementById('enc-name').textContent=(wildMon.isShiny?'✨ ':'')+wildMon.name;
+  document.getElementById('enc-meta').textContent=`Lv.${wildMon.level}${wildMon.isShiny?' · Shiny':''}`;
+  document.getElementById('wild-sprite').src=wildMon.sprite;
+  document.getElementById('wild-sprite').className=wildMon.isShiny?'shiny':'';
+  document.getElementById('player-battle-sprite').src=active.back;
+  document.getElementById('wild-label').textContent=wildMon.name;
+  document.getElementById('player-label').textContent=active.name;
+  updateHPBars();
+  setBattleLog(`A wild ${wildMon.name} appeared!${wildMon.isShiny?" It's shiny!":''}`);
+  renderMoveGrid();
+  hideBallTray();
+  disableBtns(false);
+  document.getElementById('encounter').classList.remove('hidden');
+}
+
+// ═══════════════════════════════════════════════════
+// BATTLE CORE
+// ═══════════════════════════════════════════════════
+function updateHPBars(){
+  const wp=Math.max(0,wildHP/wildMaxHP*100), pp=Math.max(0,playerHP/playerMaxHP*100);
+  const wf=document.getElementById('wild-hp-fill'), pf=document.getElementById('player-hp-fill');
+  wf.style.width=wp+'%'; pf.style.width=pp+'%';
+  wf.className='hud-fill '+(wp>50?'green':wp>25?'yellow':'red');
+  pf.className='hud-fill '+(pp>50?'green':pp>25?'yellow':'red');
+  document.getElementById('wild-hp-text').textContent=`${Math.max(0,wildHP)}/${wildMaxHP}`;
+  document.getElementById('player-hp-text').textContent=`${Math.max(0,playerHP)}/${playerMaxHP}`;
+}
+
+function setBattleLog(msg){ document.getElementById('battle-log').textContent=msg; }
+
+function disableBtns(d){
+  ['btn-catch','btn-run','btn-swap'].forEach(id=>document.getElementById(id).disabled=d);
+  document.querySelectorAll('.move-btn').forEach(b=>b.disabled=d);
+}
+
+// ── MOVE GRID ──
+function renderMoveGrid(){
+  const active=playerParty[activeSlot];
+  const grid=document.getElementById('move-grid'); grid.innerHTML='';
+  if(!active?.moves) return;
+  active.moves.forEach((mv,i)=>{
+    const btn=document.createElement('button');
+    btn.className=`move-btn t-${mv.type||'other'}`;
+    const pp=mv.currentPP??mv.pp;
+    btn.innerHTML=`${mv.name}<small>${pp}/${mv.pp} PP</small>`;
+    btn.disabled=(pp<=0);
+    btn.onclick=()=>doMove(i);
+    grid.appendChild(btn);
+  });
+}
+
+async function doMove(idx){
+  disableBtns(true); hideBallTray();
+  const active=playerParty[activeSlot];
+  const mv=active.moves[idx];
+  if(!mv||mv.currentPP<=0){ setBattleLog('No PP left!'); disableBtns(false); return; }
+  mv.currentPP=Math.max(0,mv.currentPP-1);
+  renderMoveGrid();
+
+  // Player hits
+  const base=Math.floor(mv.power/10)+Math.floor(active.level/3)+1;
+  const dmg=base+Math.floor(Math.random()*base*0.4);
+  const ps=document.getElementById('player-battle-sprite');
+  ps.classList.add('anim-attack'); await sleep(420); ps.classList.remove('anim-attack');
+  const ws=document.getElementById('wild-sprite');
+  ws.classList.add('anim-shake');
+  wildHP=Math.max(0,wildHP-dmg); updateHPBars();
+  setBattleLog(`${active.name} used ${mv.name}! Hit for ${dmg}!`);
+  await sleep(320); ws.classList.remove('anim-shake');
+  if(wildHP<=0){ await endBattle('faint'); return; }
+
+  // Wild counter
+  await sleep(400);
+  const wMv=wildMon.moves[Math.floor(Math.random()*wildMon.moves.length)];
+  const wBase=Math.floor((wMv.power||40)/10)+Math.floor(wildMon.level/4)+1;
+  const wdmg=wBase+Math.floor(Math.random()*wBase*0.4);
+  ws.classList.add('anim-attack'); await sleep(300); ws.classList.remove('anim-attack');
+  ps.classList.add('anim-shake');
+  playerHP=Math.max(0,playerHP-wdmg); active.hp=playerHP; updateHPBars();
+  setBattleLog(`${wildMon.name} used ${wMv.name}! Hit for ${wdmg}!`);
+  await sleep(320); ps.classList.remove('anim-shake');
+  if(playerHP<=0){ await endBattle('fainted'); return; }
+  disableBtns(false);
+}
+
+// ── BALL TRAY ──
+function showBallTray(){
+  ballTrayOpen=true;
+  const tray=document.getElementById('ball-tray');
+  const grid=document.getElementById('ball-tray-grid'); grid.innerHTML='';
+  BALL_KEYS.forEach(k=>{
+    const bt=BALLS[k], count=playerBalls[k]||0;
+    const div=document.createElement('div');
+    div.className='ball-choice'+(count===0?' empty':'');
+    div.innerHTML=`<img src="${bt.img}" alt="${bt.name}"/>${bt.name}<span class="bc-count">×${count}</span>`;
+    div.onclick=()=>{ if(count>0){ hideBallTray(); doThrowBall(k); } };
+    grid.appendChild(div);
+  });
+  tray.classList.remove('hidden');
+}
+
+function hideBallTray(){ ballTrayOpen=false; document.getElementById('ball-tray').classList.add('hidden'); }
+
+async function doThrowBall(ballKey){
+  disableBtns(true);
+  const bt=BALLS[ballKey];
+  if(!bt||(playerBalls[ballKey]||0)<=0){ setBattleLog('No balls of that type!'); disableBtns(false); return; }
+  playerBalls[ballKey]--;
+  renderBallStrip();
+  setBattleLog(`You threw a ${bt.name}!`);
+  const ws=document.getElementById('wild-sprite');
+  ws.classList.add('anim-flash'); await sleep(1300); ws.classList.remove('anim-flash');
+  const hpBonus=1-(wildHP/wildMaxHP)*0.3;
+  const rate=bt.catchMult>=999?1:Math.min(0.95,0.30*bt.catchMult*hpBonus);
+  if(Math.random()<rate){
+    ws.style.animation='catchAnim .6s ease forwards';
+    await sleep(700);
+    await endBattle('caught');
+  } else {
+    setBattleLog(`${wildMon.name} broke free!`);
+    await sleep(600);
+    const active=playerParty[activeSlot];
+    const wMv=wildMon.moves[Math.floor(Math.random()*wildMon.moves.length)];
+    const wBase=Math.floor((wMv.power||40)/12)+Math.floor(wildMon.level/4)+1;
+    const wdmg=wBase+Math.floor(Math.random()*wBase*0.3);
+    playerHP=Math.max(0,playerHP-wdmg); active.hp=playerHP; updateHPBars();
+    setBattleLog(`${wildMon.name} used ${wMv.name}! ${wdmg} dmg!`);
+    await sleep(500);
+    if(playerHP<=0){ await endBattle('fainted'); return; }
+    disableBtns(false);
+  }
+}
+
+async function doRun(){ setBattleLog('Got away safely!'); await sleep(700); closeBattle(); }
+
+// ═══════════════════════════════════════════════════
+// END BATTLE
+// ═══════════════════════════════════════════════════
+async function endBattle(result){
+  hideBallTray();
+  if(result==='faint'||result==='caught'){
+    // Roll drops (0-3 balls)
+    const drops=rollDrops();
+    drops.forEach(k=>{ playerBalls[k]=(playerBalls[k]||0)+1; });
+    renderBallStrip();
+
+    if(result==='caught'){
+      // Pokédex entry
+      caughtDex.push({...wildMon});
+      // Party or PC
+      let pcMsg='';
+      if(playerParty.length<PARTY_MAX){
+        playerParty.push({...wildMon, hp:wildMon.maxHP, moves:getMoveset(wildMon.id)});
+      } else {
+        pcBox.push({...wildMon, hp:wildMon.maxHP, moves:getMoveset(wildMon.id)});
+        pcMsg=`${wildMon.name} sent to PC Box!`;
+      }
+      document.getElementById('encounter').classList.add('hidden');
+      document.getElementById('caught-img').src=wildMon.sprite;
+      document.getElementById('caught-msg').textContent=`${wildMon.name} was caught!${wildMon.isShiny?' ✨ Shiny!':''}`;
+      document.getElementById('caught-pc-msg').textContent=pcMsg;
+      // Render drops
+      const dd=document.getElementById('drop-display'); dd.innerHTML='';
+      if(drops.length>0){
+        drops.forEach(k=>{
+          const d=document.createElement('div'); d.className='drop-ball';
+          d.innerHTML=`<img src="${BALLS[k].img}" alt="${BALLS[k].name}"/><span>${BALLS[k].name}</span>`;
+          dd.appendChild(d);
+        });
+      } else {
+        dd.innerHTML='<span style="font-size:11px;color:#555">No ball drop this time</span>';
+      }
+      document.getElementById('caught-popup').classList.remove('hidden');
+      renderField();
+    } else {
+      // faint
+      let logMsg=`Wild ${wildMon.name} fainted!`;
+      if(drops.length>0) logMsg+=` Dropped: ${drops.map(k=>BALLS[k].name).join(', ')}!`;
+      setBattleLog(logMsg);
+      await sleep(1400);
+      closeBattle();
+    }
+  } else if(result==='fainted'){
+    setBattleLog(`${playerParty[activeSlot].name} fainted!`); await sleep(900);
+    let next=playerParty.findIndex((m,i)=>i!==activeSlot&&m.hp>0);
+    if(next!==-1){
+      activeSlot=next;
+      const a=playerParty[activeSlot];
+      playerHP=a.hp; playerMaxHP=a.maxHP;
+      document.getElementById('player-battle-sprite').src=a.back;
+      document.getElementById('player-label').textContent=a.name;
+      updateHPBars(); renderMoveGrid();
+      setBattleLog(`Go, ${a.name}!`); await sleep(700); disableBtns(false);
+    } else {
+      setBattleLog('All Pokémon fainted!'); await sleep(1000);
+      document.getElementById('encounter').classList.add('hidden');
+      inBattle=false; showFaintScreen();
+    }
+  }
+}
+
+function closeBattle(){
+  document.getElementById('encounter').classList.add('hidden');
+  document.getElementById('wild-sprite').style.animation='';
+  inBattle=false; lastBattleTime=Date.now();
+  renderField(); updateMapMarker();
+}
+
+// ═══════════════════════════════════════════════════
+// FAINT COUNTDOWN
+// ═══════════════════════════════════════════════════
+function showFaintScreen(){
+  const sc=document.getElementById('faint-screen'), ti=document.getElementById('faint-timer');
+  sc.classList.remove('hidden'); let s=FAINT_RECOVER_SECS; ti.textContent=s;
+  const iv=setInterval(()=>{
+    s--; ti.textContent=s;
+    if(s<=0){
+      clearInterval(iv);
+      playerParty.forEach(m=>{ m.hp=m.maxHP; m.moves&&m.moves.forEach(mv=>mv.currentPP=mv.pp); });
+      activeSlot=0; sc.classList.add('hidden'); lastBattleTime=Date.now();
+      renderField(); updateMapMarker();
+    }
+  },1000);
+}
+
+// ═══════════════════════════════════════════════════
+// BALL STRIP (bottom hud)
+// ═══════════════════════════════════════════════════
+function renderBallStrip(){
+  const strip=document.getElementById('ball-strip'); strip.innerHTML='';
+  BALL_KEYS.forEach(k=>{
+    const count=playerBalls[k]||0;
+    if(count===0) return;
+    const pip=document.createElement('div'); pip.className='ball-pip';
+    pip.innerHTML=`<img src="${BALLS[k].img}" alt="${BALLS[k].name}"/><span>×${count}</span>`;
+    strip.appendChild(pip);
+  });
+  if(strip.children.length===0){
+    strip.innerHTML='<span style="font-size:10px;color:#444">No balls</span>';
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// STORAGE MODAL
+// ═══════════════════════════════════════════════════
+function renderStorageModal(){
+  // Ball shelf
+  const shelf=document.getElementById('ball-shelf'); shelf.innerHTML='';
+  BALL_KEYS.forEach(k=>{
+    const count=playerBalls[k]||0;
+    const item=document.createElement('div'); item.className='ball-shelf-item'+(count===0?' zero':'');
+    item.innerHTML=`<img src="${BALLS[k].img}" alt="${BALLS[k].name}"/>${BALLS[k].name} ×${count}`;
+    shelf.appendChild(item);
+  });
+  // PC grid
+  const pc=document.getElementById('pc-grid'); pc.innerHTML='';
+  if(pcBox.length===0){
+    pc.innerHTML='<div style="color:#444;font-size:12px;grid-column:1/-1;padding:20px 0;text-align:center">PC Box is empty</div>';
+    return;
+  }
+  pcBox.forEach(mon=>{
+    const card=document.createElement('div'); card.className='pc-card';
+    card.innerHTML=`<img src="${mon.sprite}"/><div class="pc-name">${mon.isShiny?'✨':''}${mon.name}</div><div style="font-size:9px;color:#555">Lv.${mon.level}</div>`;
+    pc.appendChild(card);
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// POKÉDEX MODAL
+// ═══════════════════════════════════════════════════
+document.querySelectorAll('.dex-filter-btn').forEach(btn=>{
+  btn.onclick=function(){
+    document.querySelectorAll('.dex-filter-btn').forEach(b=>b.classList.remove('on'));
+    this.classList.add('on');
+    dexFilter=this.dataset.filter;
+    renderDexModal();
+  };
+});
+
+function renderDexModal(){
+  const grid=document.getElementById('dex-grid'); grid.innerHTML='';
+  let list=caughtDex;
+  if(dexFilter==='shiny') list=list.filter(m=>m.isShiny);
+  if(list.length===0){
+    grid.innerHTML=`<div class="dex-empty" style="grid-column:1/-1">${dexFilter==='shiny'?'No shinies caught yet 👀':'You haven\'t caught any Pokémon yet!'}</div>`;
+    return;
+  }
+  // Deduplicate by id+shiny, show count
+  const seen={};
+  list.forEach(m=>{
+    const key=`${m.id}_${m.isShiny?1:0}`;
+    if(!seen[key]) seen[key]={...m,count:0};
+    seen[key].count++;
+  });
+  Object.values(seen).sort((a,b)=>a.id-b.id).forEach(mon=>{
+    const card=document.createElement('div');
+    card.className='dex-card'+(mon.isShiny?' shiny-dex':'');
+    card.innerHTML=`<img src="${mon.sprite}"/>
+      <div class="dc-name">${mon.isShiny?'✨ ':''}${mon.name}</div>
+      <div class="dc-lvl">#${mon.id} · ×${mon.count} caught</div>`;
+    grid.appendChild(card);
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════
+function showToast(msg){
+  const t=document.getElementById('node-toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ═══════════════════════════════════════════════════
+// BLE
+// ═══════════════════════════════════════════════════
+const MESH_SVC ='6ba1b218-15a8-461f-9fa8-5dcae273eafd';
+const FROM_CHAR='2c55e69e-4993-11ed-b878-0242ac120002';
+const FNUM_CHAR='ed9da18c-a800-4f66-a670-aa7547e34453';
+const TO_CHAR  ='f75c76d2-129e-4dad-a1dd-7866124401e7';
+
+async function connectBLE(){
+  const btn=document.getElementById('ble-btn');
+  btn.textContent='…'; btn.disabled=true;
+  try{
+    device=await navigator.bluetooth.requestDevice({filters:[{services:[MESH_SVC]}],optionalServices:[MESH_SVC]}).catch(()=>navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[MESH_SVC]}));
+    server=await device.gatt.connect(); await sleep(600);
+    const svc=await server.getPrimaryService(MESH_SVC);
+    fromRadioChar=await svc.getCharacteristic(FROM_CHAR);
+    fromNumChar  =await svc.getCharacteristic(FNUM_CHAR);
+    toRadioChar  =await svc.getCharacteristic(TO_CHAR);
+    await fromNumChar.startNotifications();
+    fromNumChar.addEventListener('characteristicvaluechanged',onPacket);
+    bleConnected=true;
+    btn.textContent='🔵 On'; btn.classList.add('connected'); btn.disabled=false;
+    showToast('📡 Meshtastic connected!');
+    device.addEventListener('gattserverdisconnected',()=>{bleConnected=false;btn.textContent='🔵 BLE';btn.classList.remove('connected');btn.disabled=false;});
+  }catch(e){btn.textContent='🔵 BLE';btn.disabled=false;}
+}
+
+async function onPacket(){
+  try{
+    const val=await fromRadioChar.readValue();
+    if(!val||val.byteLength<2) return;
+    const bytes=new Uint8Array(val.buffer); const view=new DataView(val.buffer);
+    let nodeId=null;
+    for(const off of [4,0,8]){ if(bytes.length>=off+4){const c=view.getUint32(off,false);if(c>0x10000&&c!==0xFFFFFFFF){nodeId=c;break;}} }
+    if(nodeId&&!knownNodes[nodeId]){
+      knownNodes[nodeId]=true;
+      document.getElementById('node-num').textContent=Object.keys(knownNodes).length;
+      showToast('📡 New node! Wild Pokémon incoming…');
+      setTimeout(()=>maybeSpawnEncounter(),3000);
+    }
+  }catch(e){}
+}
+
+async function requestNodes(){
+  if(!bleConnected||!toRadioChar) return;
+  try{ await toRadioChar.writeValue(new Uint8Array([0x18,0x01])); }catch(e){}
+}
+
+// ═══════════════════════════════════════════════════
+// EVENTS
+// ═══════════════════════════════════════════════════
+document.getElementById('ble-btn').onclick  =connectBLE;
+document.getElementById('btn-scan').onclick =requestNodes;
+document.getElementById('btn-catch').onclick=()=>{ if(ballTrayOpen){hideBallTray();disableBtns(false);}else{showBallTray();} };
+document.getElementById('btn-run').onclick  =doRun;
+document.getElementById('btn-swap').onclick =()=>{
+  let next=(activeSlot+1)%playerParty.length, tries=0;
+  while(playerParty[next].hp<=0&&tries<playerParty.length){next=(next+1)%playerParty.length;tries++;}
+  if(tries>=playerParty.length){setBattleLog('No healthy Pokémon!');return;}
+  activeSlot=next;
+  const a=playerParty[activeSlot];
+  playerHP=a.hp; playerMaxHP=a.maxHP;
+  document.getElementById('player-battle-sprite').src=a.back;
+  document.getElementById('player-label').textContent=a.name;
+  updateHPBars(); renderMoveGrid(); setBattleLog(`Go, ${a.name}!`);
+};
+document.getElementById('caught-ok').onclick=()=>{
+  document.getElementById('caught-popup').classList.add('hidden');
+  inBattle=false; lastBattleTime=Date.now();
+  renderField(); renderBallStrip(); updateMapMarker();
+  saveGame();
+};
+
+// Auto-save every 2 minutes
+setInterval(saveGame, 120000);
+</script>
+</body>
+</html>
