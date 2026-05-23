@@ -1,3 +1,6 @@
+
+raw
+Index · HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -30,18 +33,12 @@
     .log div { margin-bottom: 2px; }
     .log div.hi { color: #1D9E75; }
     .log div.er { color: #e24b4a; }
-    .warn { background: #2a2000; border: 1px solid #554400; border-radius: 10px; padding: 12px 14px; font-size: 13px; color: #EF9F27; margin-bottom: 16px; display: none; }
   </style>
 </head>
 <body>
  
   <h1>PokéMesh Scanner</h1>
   <p class="subtitle">Discovers nearby Meshtastic nodes via Bluetooth</p>
- 
-  <div class="warn" id="no-ble">
-    &#x26A0; Web Bluetooth not supported in this browser.<br>
-    Use <strong>Chrome on desktop</strong> or <strong>BLE Link on iOS</strong>.
-  </div>
  
   <div class="status-row">
     <div class="dot" id="dot"></div>
@@ -65,10 +62,11 @@
   <div class="log" id="log"></div>
  
 <script>
-  const MESHTASTIC_SERVICE = '6ba1b218-15a8-461f-9fa8-5d6e91588c8a';
-  const FROMRADIO_CHAR    = '2c55cbb9-5b76-4a30-95af-a62fc1f7e5d9';
-  const FROMNUM_CHAR      = 'ed9da18c-a800-4f66-a670-aa7547e34453';
-  const TORADIO_CHAR      = 'f75c76d2-129e-4dad-a1dd-7866124401e7';
+  // Correct UUIDs from official Meshtastic docs
+  const MESHTASTIC_SERVICE = '6ba1b218-15a8-461f-9fa8-5dcae273eafd';
+  const FROMRADIO_CHAR     = '2c55e69e-4993-11ed-b878-0242ac120002';
+  const FROMNUM_CHAR       = 'ed9da18c-a800-4f66-a670-aa7547e34453';
+  const TORADIO_CHAR       = 'f75c76d2-129e-4dad-a1dd-7866124401e7';
  
   let nodes = {};
   let connected = false;
@@ -109,70 +107,53 @@
     log('Node discovered: ' + (name || '!' + shortId), 'hi');
   };
  
-  const tryParseProtobuf = (bytes) => {
-    // Walk the bytes looking for readable strings (node names)
-    // and 4-byte sequences that look like node IDs
-    let names = [];
-    let i = 0;
-    while (i < bytes.length) {
-      if (bytes[i] >= 32 && bytes[i] < 127) {
-        let str = '';
-        let j = i;
-        while (j < bytes.length && bytes[j] >= 32 && bytes[j] < 127) {
-          str += String.fromCharCode(bytes[j]);
-          j++;
-        }
-        if (str.length >= 2 && str.length <= 32) names.push(str);
-        i = j;
-      } else {
-        i++;
-      }
-    }
-    return names;
-  };
- 
   const parsePacket = (buffer) => {
     try {
       const bytes = new Uint8Array(buffer);
       if (bytes.length < 2) return;
- 
-      log('Packet received (' + bytes.length + ' bytes)');
+      log('Packet ' + bytes.length + ' bytes');
  
       const view = new DataView(buffer);
       let nodeId = null;
       let snr = undefined;
+      let name = null;
  
-      // Try to extract node ID from various offsets
-      for (let offset of [4, 0, 8]) {
+      // Extract node ID from common offsets
+      for (let offset of [4, 0, 8, 12]) {
         if (bytes.length >= offset + 4) {
           const candidate = view.getUint32(offset, false);
-          if (candidate !== 0 && candidate !== 0xFFFFFFFF && candidate > 0x1000) {
+          if (candidate > 0x10000 && candidate !== 0xFFFFFFFF) {
             nodeId = candidate;
             break;
           }
         }
       }
  
-      // Try to find SNR (usually a small signed value)
-      for (let offset of [bytes.length - 2, bytes.length - 4]) {
-        if (offset >= 0) {
-          const candidate = view.getInt8(offset);
-          if (candidate >= -30 && candidate <= 15) {
-            snr = candidate;
+      // Extract readable strings (node names)
+      let i = 0;
+      while (i < bytes.length) {
+        if (bytes[i] >= 32 && bytes[i] < 127) {
+          let str = '';
+          let j = i;
+          while (j < bytes.length && bytes[j] >= 32 && bytes[j] < 127) {
+            str += String.fromCharCode(bytes[j]);
+            j++;
+          }
+          if (str.length >= 2 && str.length <= 32 && !/^[0-9]+$/.test(str)) {
+            name = str;
             break;
           }
-        }
-      }
- 
-      const names = tryParseProtobuf(bytes);
-      const name = names.find(n => n.length >= 2 && !/^[0-9a-f]+$/i.test(n)) || null;
- 
-      if (!nodeId && name) {
-        nodeId = Math.abs(name.split('').reduce((h, c) => Math.imul(31, h) + c.charCodeAt(0) | 0, 0));
+          i = j;
+        } else { i++; }
       }
  
       if (nodeId || name) {
-        addNode(nodeId || name, name, snr);
+        if (!nodeId && name) {
+          nodeId = Math.abs(name.split('').reduce((h,c) => Math.imul(31,h)+c.charCodeAt(0)|0, 0));
+        }
+        addNode(nodeId, name, snr);
+      } else {
+        log('Packet received but no node ID found yet');
       }
     } catch(e) {
       log('Parse error: ' + e.message, 'er');
@@ -191,88 +172,80 @@
   const connectBLE = async () => {
     log('Requesting Bluetooth device...');
     setStatus('Connecting...', 'amber');
- 
-    // Try with Meshtastic service filter first, fall back to acceptAllDevices
-    let dev;
     try {
-      dev = await navigator.bluetooth.requestDevice({
-        filters: [
-          { services: [MESHTASTIC_SERVICE] },
-          { namePrefix: 'Meshtastic' },
-          { namePrefix: 'Heltec' },
-          { namePrefix: 'T-Beam' },
-          { namePrefix: 'RAK' },
-          { namePrefix: 'TLora' }
-        ],
+      device = await navigator.bluetooth.requestDevice({
+        filters: [{ services: [MESHTASTIC_SERVICE] }],
         optionalServices: [MESHTASTIC_SERVICE]
       });
     } catch(e) {
-      log('Filter scan failed, trying all devices...', 'er');
+      log('Filter failed, trying all devices...', 'er');
       try {
-        dev = await navigator.bluetooth.requestDevice({
+        device = await navigator.bluetooth.requestDevice({
           acceptAllDevices: true,
           optionalServices: [MESHTASTIC_SERVICE]
         });
       } catch(e2) {
-        log('Bluetooth error: ' + e2.message, 'er');
+        log('Error: ' + e2.message, 'er');
         setStatus('Disconnected', '');
         return;
       }
     }
  
-    device = dev;
-    log('Found: ' + (device.name || 'unnamed device'));
- 
+    log('Found: ' + (device.name || 'unnamed'));
     try {
       server = await device.gatt.connect();
       log('GATT connected');
     } catch(e) {
-      log('GATT connect failed: ' + e.message, 'er');
+      log('GATT failed: ' + e.message, 'er');
       setStatus('Disconnected', '');
       return;
     }
  
     try {
+      log('Getting service ' + MESHTASTIC_SERVICE + '...');
       const service = await server.getPrimaryService(MESHTASTIC_SERVICE);
+      log('Service found!', 'hi');
+ 
       fromRadioChar = await service.getCharacteristic(FROMRADIO_CHAR);
-      fromNumChar   = await service.getCharacteristic(FROMNUM_CHAR);
+      log('fromRadio char found', 'hi');
+      fromNumChar = await service.getCharacteristic(FROMNUM_CHAR);
+      log('fromNum char found', 'hi');
  
       await fromNumChar.startNotifications();
       fromNumChar.addEventListener('characteristicvaluechanged', readFromRadio);
  
       connected = true;
       setStatus('Connected: ' + (device.name || 'device'), 'green');
- 
-      const btn = document.getElementById('connect-btn');
-      btn.textContent = '✓ Connected';
-      btn.disabled = true;
- 
+      document.getElementById('connect-btn').textContent = '✓ Connected';
+      document.getElementById('connect-btn').disabled = true;
       const empty = document.getElementById('empty-state');
       if (empty) empty.innerHTML = '<div class="empty-icon">&#x1F4E1;</div>Scanning for nodes...';
- 
-      log('Listening for node packets...', 'hi');
+      log('Listening for packets!', 'hi');
  
       device.addEventListener('gattserverdisconnected', () => {
         connected = false;
         setStatus('Disconnected', '');
-        log('Device disconnected', 'er');
-        const btn = document.getElementById('connect-btn');
-        btn.textContent = '📶 Reconnect';
-        btn.disabled = false;
+        log('Disconnected', 'er');
+        document.getElementById('connect-btn').textContent = '📶 Reconnect';
+        document.getElementById('connect-btn').disabled = false;
       });
  
     } catch(e) {
+      // List all available services for debugging
       log('Service error: ' + e.message, 'er');
-      log('Device connected but Meshtastic service not found. Is this a Meshtastic node?', 'er');
-      setStatus('Service not found', '');
+      try {
+        log('Listing all services on device...', 'er');
+        const services = await server.getPrimaryServices();
+        services.forEach(s => log('Found service: ' + s.uuid));
+      } catch(e2) {
+        log('Could not list services: ' + e2.message, 'er');
+      }
     }
   };
  
-  // Check Web Bluetooth support
   if (!navigator.bluetooth) {
-    document.getElementById('no-ble').style.display = 'block';
+    log('Web Bluetooth not supported in this browser!', 'er');
     document.getElementById('connect-btn').disabled = true;
-    log('Web Bluetooth not available in this browser', 'er');
   }
  
   document.getElementById('connect-btn').addEventListener('click', () => {
