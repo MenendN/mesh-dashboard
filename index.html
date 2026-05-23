@@ -1,756 +1,420 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
-<title>PokéMesh</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#1a1a2e;color:#fff;height:100vh;width:100vw;overflow:hidden;}
+
+html, body {
+  height:100%;
+  overflow:hidden;
+}
+
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:#1a1a2e;
+  color:#fff;
+  height:100vh;
+  width:100vw;
+  overflow:hidden;
+}
 
 /* ── STARTER SCREEN ── */
-#starter-screen{position:absolute;inset:0;z-index:200;background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;}
+#starter-screen{
+  position:absolute;
+  inset:0;
+  z-index:200;
+  background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
 #starter-screen.hidden{display:none;}
-#starter-screen h1{font-size:30px;font-weight:800;color:#FFD700;text-shadow:0 0 20px #FFD70088;margin-bottom:4px;}
-#starter-screen p{font-size:13px;color:#aaa;margin-bottom:20px;}
-.starter-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:380px;}
-.starter-card{background:#ffffff11;border:2px solid #ffffff22;border-radius:14px;padding:12px 6px;text-align:center;cursor:pointer;transition:all .2s;}
-.starter-card:active{border-color:#FFD700;background:#FFD70022;transform:scale(1.04);}
-.starter-card img{width:68px;height:68px;image-rendering:pixelated;}
-.starter-card .sname{font-size:11px;font-weight:700;margin-top:4px;}
-.starter-card .stype{font-size:10px;color:#aaa;}
-.shiny-badge{display:inline-block;background:#FFD700;color:#000;font-size:9px;font-weight:700;padding:1px 5px;border-radius:20px;margin-top:2px;}
+#starter-screen h1{
+  font-size:30px;
+  font-weight:800;
+  color:#FFD700;
+  text-shadow:0 0 20px #FFD70088;
+  margin-bottom:4px;
+}
+#starter-screen p{
+  font-size:13px;
+  color:#aaa;
+  margin-bottom:20px;
+}
+
+.starter-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+  width:100%;
+  max-width:380px;
+}
+
+.starter-card{
+  background:#ffffff11;
+  border:2px solid #ffffff22;
+  border-radius:14px;
+  padding:12px 6px;
+  text-align:center;
+  cursor:pointer;
+  transition:all .2s;
+}
+
+.starter-card:active{
+  border-color:#FFD700;
+  background:#FFD70022;
+  transform:scale(1.04);
+}
+
+.starter-card img{
+  width:68px;
+  height:68px;
+  image-rendering:pixelated;
+}
+
+.starter-card .sname{
+  font-size:11px;
+  font-weight:700;
+  margin-top:4px;
+}
+
+.starter-card .stype{
+  font-size:10px;
+  color:#aaa;
+}
+
+.shiny-badge{
+  display:inline-block;
+  background:#FFD700;
+  color:#000;
+  font-size:9px;
+  font-weight:700;
+  padding:1px 5px;
+  border-radius:20px;
+  margin-top:2px;
+}
 
 /* ── LOCATION PERMISSION SCREEN ── */
-#location-screen{position:absolute;inset:0;z-index:190;background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center;}
+#location-screen{
+  position:absolute;
+  inset:0;
+  z-index:190;
+  background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:30px;
+  text-align:center;
+}
+
 #location-screen.hidden{display:none;}
-#location-screen .loc-icon{font-size:64px;margin-bottom:16px;}
-#location-screen h2{font-size:22px;font-weight:800;color:#FFD700;margin-bottom:10px;}
-#location-screen p{font-size:13px;color:#aaa;line-height:1.6;margin-bottom:8px;max-width:320px;}
-#location-screen .loc-note{font-size:11px;color:#666;margin-bottom:28px;max-width:300px;}
-#btn-allow-location{background:#1D9E75;color:#fff;border:none;padding:16px 40px;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;width:100%;max-width:300px;margin-bottom:12px;}
-#btn-allow-location:active{background:#0F6E56;transform:scale(0.98);}
-#btn-skip-location{background:transparent;color:#666;border:1px solid #333;padding:10px 24px;border-radius:10px;font-size:13px;cursor:pointer;width:100%;max-width:300px;}
-#location-status{font-size:12px;color:#aaa;margin-top:14px;min-height:18px;}
+
+#location-screen .loc-icon{
+  font-size:64px;
+  margin-bottom:16px;
+}
+
+#location-screen h2{
+  font-size:22px;
+  font-weight:800;
+  color:#FFD700;
+  margin-bottom:10px;
+}
+
+#location-screen p{
+  font-size:13px;
+  color:#aaa;
+  line-height:1.6;
+  margin-bottom:8px;
+  max-width:320px;
+}
+
+#location-screen .loc-note{
+  font-size:11px;
+  color:#666;
+  margin-bottom:28px;
+  max-width:300px;
+}
+
+#btn-allow-location{
+  background:#1D9E75;
+  color:#fff;
+  border:none;
+  padding:16px 40px;
+  border-radius:14px;
+  font-size:16px;
+  font-weight:700;
+  cursor:pointer;
+  width:100%;
+  max-width:300px;
+  margin-bottom:12px;
+}
+
+#btn-allow-location:active{
+  background:#0F6E56;
+  transform:scale(0.98);
+}
+
+#btn-skip-location{
+  background:transparent;
+  color:#666;
+  border:1px solid #333;
+  padding:10px 24px;
+  border-radius:10px;
+  font-size:13px;
+  cursor:pointer;
+  width:100%;
+  max-width:300px;
+}
+
+#location-status{
+  font-size:12px;
+  color:#aaa;
+  margin-top:14px;
+  min-height:18px;
+}
 
 /* ── MAIN LAYOUT ── */
-#game-screen{position:absolute;inset:0;display:flex;flex-direction:column;}
-#game-screen.hidden{display:none;}
+#game-screen{
+  position:absolute;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  height:100dvh;
+  overflow:hidden;
+}
 
-/* TOP PANEL — 50% */
-#top-panel{flex:0 0 50vh;display:flex;flex-direction:column;background:#1a1a2e;position:relative;overflow:hidden;}
+/* ── TOP PANEL ── */
+#top-panel{
+  flex:1;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  background:#1a1a2e;
+  overflow:hidden;
+}
 
 /* TOPBAR */
-#topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#0f1117;border-bottom:1px solid #ffffff11;z-index:10;flex-shrink:0;}
-#topbar .logo{font-size:17px;font-weight:800;color:#FFD700;}
-#ble-btn{background:#1D9E75;border:none;color:#fff;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;}
-#ble-btn.connected{background:#0F6E56;}
+#topbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:10px 14px;
+  background:#0f1117;
+  border-bottom:1px solid #ffffff11;
+  z-index:10;
+  flex-shrink:0;
+}
 
-/* PARTY + STATUS AREA */
-#main-area{flex:1;display:flex;flex-direction:column;padding:12px 14px;gap:10px;overflow-y:auto;}
+#topbar .logo{
+  font-size:17px;
+  font-weight:800;
+  color:#FFD700;
+}
+
+#ble-btn{
+  background:#1D9E75;
+  border:none;
+  color:#fff;
+  padding:6px 12px;
+  border-radius:20px;
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+}
+
+#ble-btn.connected{
+  background:#0F6E56;
+}
+
+/* MAIN CONTENT */
+#main-area{
+  flex:1;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  padding:12px 14px;
+  gap:10px;
+  overflow-y:auto;
+}
 
 /* PARTY GRID */
-#party-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
-.party-card{background:#0f1117;border:2px solid #ffffff15;border-radius:12px;padding:8px;text-align:center;cursor:pointer;transition:border .2s;}
-.party-card.active{border-color:#FFD700;}
-.party-card.fainted{opacity:.4;}
-.party-card img{width:52px;height:52px;image-rendering:pixelated;}
-.party-card .pname{font-size:11px;font-weight:600;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.party-card .hp-bar{height:4px;background:#2a2d3a;border-radius:2px;margin-top:4px;}
-.party-card .hp-fill{height:100%;border-radius:2px;transition:width .3s;}
+#party-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+}
+
+.party-card{
+  background:#0f1117;
+  border:2px solid #ffffff15;
+  border-radius:12px;
+  padding:8px;
+  text-align:center;
+  cursor:pointer;
+  transition:border .2s;
+}
+
+.party-card.active{
+  border-color:#FFD700;
+}
+
+.party-card.fainted{
+  opacity:.4;
+}
+
+.party-card img{
+  width:52px;
+  height:52px;
+  image-rendering:pixelated;
+}
+
+.party-card .pname{
+  font-size:11px;
+  font-weight:600;
+  margin-top:2px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.party-card .hp-bar{
+  height:4px;
+  background:#2a2d3a;
+  border-radius:2px;
+  margin-top:4px;
+}
+
+.party-card .hp-fill{
+  height:100%;
+  border-radius:2px;
+  transition:width .3s;
+}
 
 /* INFO ROW */
-#info-row{display:flex;gap:8px;}
-#node-count{flex:1;background:#0f1117;border-radius:10px;padding:10px;font-size:12px;color:#aaa;border:1px solid #ffffff11;}
-#node-count span{display:block;font-size:20px;font-weight:700;color:#1D9E75;}
-#gps-box{flex:1;background:#0f1117;border-radius:10px;padding:10px;font-size:11px;color:#aaa;border:1px solid #ffffff11;display:flex;flex-direction:column;gap:4px;}
-#gps-status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#e24b4a;margin-right:4px;vertical-align:middle;}
-#gps-status-dot.active{background:#1D9E75;}
-#gps-coords{font-size:10px;color:#666;word-break:break-all;}
-#btn-refresh-gps{background:#1a3a8f;border:none;color:#fff;padding:4px 8px;border-radius:6px;font-size:10px;cursor:pointer;align-self:flex-start;}
+#info-row{
+  display:flex;
+  gap:8px;
+}
 
-/* ACTION BTNS */
-#action-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-#action-row button{padding:10px;border-radius:10px;border:none;font-size:12px;font-weight:600;cursor:pointer;color:#fff;}
-#btn-scan{background:#1a3a8f;}
-#btn-drain{background:#2a2d3a;}
+#node-count{
+  flex:1;
+  background:#0f1117;
+  border-radius:10px;
+  padding:10px;
+  font-size:12px;
+  color:#aaa;
+  border:1px solid #ffffff11;
+}
 
-/* BOTTOM MAP PANEL — 50% */
-#map-panel{flex:0 0 50vh;position:relative;border-top:2px solid #FFD70033;}
-#map{position:absolute;inset:0;}
-#node-toast{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:#1D9E75dd;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;z-index:10;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;}
-#node-toast.show{opacity:1;}
+#node-count span{
+  display:block;
+  font-size:20px;
+  font-weight:700;
+  color:#1D9E75;
+}
 
-/* ── ENCOUNTER OVERLAY ── */
-#encounter{position:absolute;inset:0;z-index:150;background:linear-gradient(160deg,#1a1a2e,#0f3460);display:flex;flex-direction:column;align-items:center;padding:16px;overflow-y:auto;}
-#encounter.hidden{display:none;}
-#enc-title{font-size:12px;color:#aaa;margin-bottom:2px;}
-#enc-name{font-size:22px;font-weight:800;color:#FFD700;}
-#enc-meta{font-size:11px;color:#888;margin-bottom:10px;}
+#gps-box{
+  flex:1;
+  background:#0f1117;
+  border-radius:10px;
+  padding:10px;
+  font-size:11px;
+  color:#aaa;
+  border:1px solid #ffffff11;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
 
-/* BATTLE SCENE */
-#battle-scene{width:100%;max-width:360px;height:180px;background:linear-gradient(#87CEEB 0%,#87CEEB 55%,#90EE90 55%);border-radius:14px;position:relative;overflow:hidden;margin-bottom:10px;flex-shrink:0;}
-#wild-platform{position:absolute;top:14px;right:16px;text-align:center;}
-#wild-sprite{width:90px;height:90px;image-rendering:pixelated;filter:drop-shadow(0 4px 8px #0008);}
-#wild-sprite.shiny{filter:drop-shadow(0 0 14px #FFD700) drop-shadow(0 4px 8px #0008);}
-#player-platform{position:absolute;bottom:8px;left:16px;}
-#player-battle-sprite{width:76px;height:76px;image-rendering:pixelated;transform:scaleX(-1);filter:drop-shadow(0 4px 8px #0008);}
+#gps-status-dot{
+  display:inline-block;
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:#e24b4a;
+  margin-right:4px;
+  vertical-align:middle;
+}
 
-/* HUD */
-.battle-hud{width:100%;max-width:360px;margin-bottom:6px;}
-.hud-row{display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;}
-.hud-bar{height:7px;background:#2a2d3a;border-radius:4px;overflow:hidden;}
-.hud-fill{height:100%;border-radius:4px;transition:width .4s;}
-.hud-fill.green{background:#1D9E75;}
-.hud-fill.yellow{background:#EF9F27;}
-.hud-fill.red{background:#e24b4a;}
+#gps-status-dot.active{
+  background:#1D9E75;
+}
 
-/* BATTLE LOG */
-#battle-log{width:100%;max-width:360px;background:#0008;border-radius:10px;padding:9px 12px;font-size:13px;color:#ddd;min-height:40px;margin-bottom:10px;border:1px solid #ffffff11;flex-shrink:0;}
+#gps-coords{
+  font-size:10px;
+  color:#666;
+  word-break:break-all;
+}
 
-/* BATTLE BTNS */
-#battle-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;max-width:360px;flex-shrink:0;}
-#battle-btns button{padding:11px;border-radius:12px;border:none;font-size:13px;font-weight:600;cursor:pointer;}
-#btn-attack{background:#e24b4a;color:#fff;}
-#btn-catch{background:#FFD700;color:#000;}
-#btn-run{background:#2a2d3a;color:#aaa;}
-#btn-swap{background:#1a3a8f;color:#fff;}
+#btn-refresh-gps{
+  background:#1a3a8f;
+  border:none;
+  color:#fff;
+  padding:4px 8px;
+  border-radius:6px;
+  font-size:10px;
+  cursor:pointer;
+  align-self:flex-start;
+}
 
-/* ── CAUGHT POPUP ── */
-#caught-popup{position:absolute;inset:0;z-index:160;background:#000d;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;}
-#caught-popup.hidden{display:none;}
-#caught-popup h2{font-size:24px;font-weight:800;color:#FFD700;margin-bottom:8px;}
-#caught-popup img{width:110px;height:110px;image-rendering:pixelated;margin-bottom:10px;}
-#caught-popup p{font-size:13px;color:#aaa;margin-bottom:18px;text-align:center;}
-#caught-popup button{background:#1D9E75;color:#fff;border:none;padding:12px 32px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;}
+/* ACTION BUTTONS */
+#action-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
 
-/* ── FAINT SCREEN ── */
-#faint-screen{position:absolute;inset:0;z-index:170;background:#000e;display:flex;flex-direction:column;align-items:center;justify-content:center;}
-#faint-screen.hidden{display:none;}
-#faint-screen h2{font-size:22px;font-weight:800;color:#e24b4a;margin-bottom:10px;}
-#faint-screen p{font-size:13px;color:#aaa;margin-bottom:20px;}
-#faint-timer{font-size:48px;font-weight:800;color:#FFD700;}
-#faint-sub{font-size:12px;color:#888;margin-top:6px;}
+#action-row button{
+  padding:10px;
+  border-radius:10px;
+  border:none;
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+  color:#fff;
+}
 
-/* ANIMS */
-@keyframes attackSlide{0%{transform:scaleX(-1) translateX(0);}50%{transform:scaleX(-1) translateX(55px);}100%{transform:scaleX(-1) translateX(0);}}
-@keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);}}
-@keyframes flash{0%,100%{opacity:1;}50%{opacity:.15;}}
-@keyframes catchAnim{0%{transform:scale(1);}40%{transform:scale(0.1);}100%{transform:scale(0);}}
-.anim-attack{animation:attackSlide .4s ease;}
-.anim-shake{animation:shake .3s ease;}
-.anim-flash{animation:flash .35s ease 3;}
+#btn-scan{
+  background:#1a3a8f;
+}
+
+#btn-drain{
+  background:#2a2d3a;
+}
+
+/* ── MAP PANEL ── */
+#map-panel{
+  height:38vh;
+  min-height:220px;
+  position:relative;
+  border-top:2px solid #FFD70033;
+  flex-shrink:0;
+}
+
+#map{
+  position:absolute;
+  inset:0;
+}
+
+#node-toast{
+  position:absolute;
+  top:8px;
+  left:50%;
+  transform:translateX(-50%);
+  background:#1D9E75dd;
+  padding:6px 14px;
+  border-radius:20px;
+  font-size:12px;
+  font-weight:600;
+  z-index:10;
+  opacity:0;
+  transition:opacity .3s;
+  pointer-events:none;
+  white-space:nowrap;
+}
+
+#node-toast.show{
+  opacity:1;
+}
 </style>
-</head>
-<body>
-
-<!-- STARTER -->
-<div id="starter-screen">
-  <h1>⚡ PokéMesh</h1>
-  <p>Choose your starter — each has an 8% shiny chance</p>
-  <div class="starter-grid" id="starter-grid"></div>
-</div>
-
-<!-- LOCATION PERMISSION -->
-<div id="location-screen" class="hidden">
-  <div class="loc-icon">📍</div>
-  <h2>Enable Location</h2>
-  <p>PokéMesh uses your location to show you on the map, detect nearby landmarks, and trigger wild Pokémon encounters.</p>
-  <p class="loc-note">Tap "Allow Location" then choose <strong>Allow</strong> when your iPhone asks. Location is only used locally — never sent anywhere.</p>
-  <button id="btn-allow-location">📍 Allow Location</button>
-  <button id="btn-skip-location">Skip for now</button>
-  <div id="location-status"></div>
-</div>
-
-<!-- MAIN GAME -->
-<div id="game-screen" class="hidden">
-
-  <!-- TOP 2/3 -->
-  <div id="top-panel">
-    <div id="topbar">
-      <span class="logo">⚡ PokéMesh</span>
-      <button id="ble-btn">🔵 Connect BLE</button>
-    </div>
-    <div id="main-area">
-      <div id="party-grid"></div>
-      <div id="info-row">
-        <div id="node-count"><span id="node-num">0</span>Nodes Seen</div>
-        <div id="gps-box">
-          <div style="font-size:12px;font-weight:600;color:#fff;">
-            <span id="gps-status-dot"></span>GPS
-          </div>
-          <div id="gps-coords">Waiting for signal...</div>
-          <button id="btn-refresh-gps">🔄 Refresh</button>
-        </div>
-      </div>
-      <div id="action-row">
-        <button id="btn-scan">📡 Request Nodes</button>
-        <button id="btn-drain">⬇ Drain Buffer</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- BOTTOM 1/3 MAP -->
-  <div id="map-panel">
-    <div id="map"></div>
-    <div id="node-toast">📡 New node!</div>
-  </div>
-
-  <!-- ENCOUNTER -->
-  <div id="encounter" class="hidden">
-    <div id="enc-title">A wild Pokémon appeared!</div>
-    <div id="enc-name"></div>
-    <div id="enc-meta"></div>
-    <div class="battle-hud">
-      <div class="hud-row"><span id="wild-label">Wild</span><span id="wild-hp-text"></span></div>
-      <div class="hud-bar"><div class="hud-fill green" id="wild-hp-fill" style="width:100%"></div></div>
-    </div>
-    <div id="battle-scene">
-      <div id="wild-platform"><img id="wild-sprite" src="" alt="wild"/></div>
-      <div id="player-platform"><img id="player-battle-sprite" src="" alt="player"/></div>
-    </div>
-    <div class="battle-hud">
-      <div class="hud-row"><span id="player-label">Your Pokémon</span><span id="player-hp-text"></span></div>
-      <div class="hud-bar"><div class="hud-fill green" id="player-hp-fill" style="width:100%"></div></div>
-    </div>
-    <div id="battle-log">What will you do?</div>
-    <div id="battle-btns">
-      <button id="btn-attack">⚔️ Attack</button>
-      <button id="btn-catch">🟡 Throw Ball</button>
-      <button id="btn-run">🏃 Run</button>
-      <button id="btn-swap">🔄 Swap</button>
-    </div>
-  </div>
-
-  <!-- CAUGHT -->
-  <div id="caught-popup" class="hidden">
-    <h2>Gotcha! 🎉</h2>
-    <img id="caught-img" src="" alt="caught"/>
-    <p id="caught-msg"></p>
-    <button id="caught-ok">Continue</button>
-  </div>
-
-  <!-- FAINT COUNTDOWN -->
-  <div id="faint-screen" class="hidden">
-    <h2>💀 All Pokémon Fainted!</h2>
-    <p>Your team is recovering...</p>
-    <div id="faint-timer">60</div>
-    <div id="faint-sub">seconds until full heal</div>
-  </div>
-
-</div>
-
-<script>
-// ── CONFIG ──────────────────────────────────────────────
-const BATTLE_COOLDOWN_MS = 20000;
-const LANDMARK_RADIUS_M  = 150;
-const CATCH_BASE_RATE    = 0.65;
-const SHINY_CHANCE       = 0.08;
-const FAINT_RECOVER_SECS = 60;
-
-const LANDMARKS = [
-  { name:'Space Needle',   lat:47.6205, lng:-122.3493, special:93  }, // Haunter
-  { name:'Local 418',      lat:47.6237, lng:-122.3246, special:122 }, // Mr. Mime
-  { name:'Rainier Square', lat:47.6080, lng:-122.3359, special:130 }, // Gyarados
-];
-
-const STARTERS = [
-  {id:1,  name:'Bulbasaur',  type:'Grass/Poison'},
-  {id:4,  name:'Charmander', type:'Fire'},
-  {id:7,  name:'Squirtle',   type:'Water'},
-  {id:25, name:'Pikachu',    type:'Electric'},
-  {id:133,name:'Eevee',      type:'Normal'},
-  {id:122,name:'Mr. Mime',   type:'Psychic/Fairy'},
-];
-
-const COMMON   = [16,19,21,23,27,29,32,41,43,46,48,52,54,56,58,60,63,66,69,72,74,77,79,81,84,86,88,90,96,98,100,102,104,109,111,116,118,120,129,147];
-const UNCOMMON = [64,67,75,80,82,85,87,89,91,93,94,95,97,99,101,103,105,106,107,108,112,113,114,115,117,119,121,128,130,131,132,134,135,136,138,139,140,141,142,143,148];
-
-// ── STATE ────────────────────────────────────────────────
-let playerParty=[], activeSlot=0, caughtList=[], knownNodes={};
-let playerPos=null, map, playerMarker;
-let lastBattleTime=0, inBattle=false;
-let wildMon=null, wildHP=0, wildMaxHP=0, playerHP=0, playerMaxHP=0;
-let bleConnected=false, device, server, fromRadioChar, fromNumChar, toRadioChar;
-let watchId=null; // GPS watch handle
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-
-// ── SPRITES ─────────────────────────────────────────────
-const spriteUrl =id=>`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
-const shinyUrl  =id=>`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${id}.png`;
-const backUrl   =id=>`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${id}.png`;
-
-// ── STARTER SCREEN ───────────────────────────────────────
-const grid=document.getElementById('starter-grid');
-STARTERS.forEach(s=>{
-  const isShiny=Math.random()<SHINY_CHANCE;
-  const url=isShiny?shinyUrl(s.id):spriteUrl(s.id);
-  const card=document.createElement('div');
-  card.className='starter-card';
-  card.innerHTML=`<img src="${url}" alt="${s.name}"/><div class="sname">${s.name}</div><div class="stype">${s.type}</div>${isShiny?'<span class="shiny-badge">✨ SHINY</span>':''}`;
-  card.onclick=()=>pickStarter(s,isShiny);
-  grid.appendChild(card);
-});
-
-function pickStarter(s,isShiny){
-  const mon=makeMon(s.id,s.name,isShiny,true);
-  playerParty=[mon];
-  document.getElementById('starter-screen').classList.add('hidden');
-  // Show location permission screen instead of jumping straight to game
-  document.getElementById('location-screen').classList.remove('hidden');
-}
-
-// ── LOCATION PERMISSION SCREEN ───────────────────────────
-document.getElementById('btn-allow-location').onclick = function() {
-  const statusEl = document.getElementById('location-status');
-  const btn = this;
-  btn.textContent = '⏳ Requesting...';
-  btn.disabled = true;
-  statusEl.textContent = '';
-
-  if (!navigator.geolocation) {
-    statusEl.textContent = '❌ Geolocation not supported on this device.';
-    btn.textContent = '📍 Allow Location';
-    btn.disabled = false;
-    return;
-  }
-
-  // This direct call inside a tap handler is what iOS requires
-  navigator.geolocation.getCurrentPosition(
-    function(pos) {
-      const {latitude:lat, longitude:lng} = pos.coords;
-      playerPos = {lat, lng};
-      statusEl.textContent = '✅ Location found!';
-      btn.textContent = '✅ Location Enabled';
-      setTimeout(() => launchGame(), 800);
-      // Start continuous watching after permission granted
-      startWatchingPosition();
-    },
-    function(err) {
-      btn.textContent = '📍 Allow Location';
-      btn.disabled = false;
-      if (err.code === 1) {
-        statusEl.textContent = '❌ Permission denied. Please enable Location in Settings > Safari > Location.';
-      } else if (err.code === 2) {
-        statusEl.textContent = '❌ Location unavailable. Are you indoors?';
-      } else {
-        statusEl.textContent = '❌ Timed out. Try again.';
-      }
-    },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-  );
-};
-
-document.getElementById('btn-skip-location').onclick = function() {
-  launchGame();
-};
-
-// ── GPS WATCHING ─────────────────────────────────────────
-function startWatchingPosition() {
-  if (!navigator.geolocation) return;
-  if (watchId !== null) {
-    navigator.geolocation.clearWatch(watchId);
-  }
-  watchId = navigator.geolocation.watchPosition(
-    function(pos) {
-      const {latitude:lat, longitude:lng, accuracy} = pos.coords;
-      playerPos = {lat, lng};
-      document.getElementById('gps-status-dot').classList.add('active');
-      document.getElementById('gps-coords').textContent =
-        `${lat.toFixed(5)}, ${lng.toFixed(5)}\n±${Math.round(accuracy)}m`;
-      updateMapMarker();
-      checkLandmarks(lat, lng);
-    },
-    function(err) {
-      document.getElementById('gps-status-dot').classList.remove('active');
-      document.getElementById('gps-coords').textContent = 'Signal lost — tap Refresh';
-    },
-    { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 }
-  );
-}
-
-// Refresh button — re-requests a fresh one-shot fix and restarts watch
-document.getElementById('btn-refresh-gps').onclick = function() {
-  const coordsEl = document.getElementById('gps-coords');
-  const dot = document.getElementById('gps-status-dot');
-  coordsEl.textContent = 'Refreshing...';
-  dot.classList.remove('active');
-
-  if (!navigator.geolocation) {
-    coordsEl.textContent = 'Not supported';
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    function(pos) {
-      const {latitude:lat, longitude:lng, accuracy} = pos.coords;
-      playerPos = {lat, lng};
-      dot.classList.add('active');
-      coordsEl.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}\n±${Math.round(accuracy)}m`;
-      updateMapMarker();
-      if (map) map.setView([lat, lng], 16);
-      checkLandmarks(lat, lng);
-      // Restart watch
-      startWatchingPosition();
-    },
-    function(err) {
-      coordsEl.textContent = err.code === 1
-        ? 'Denied — check Settings > Safari'
-        : 'Could not get location';
-    },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-  );
-};
-
-// ── LAUNCH GAME ──────────────────────────────────────────
-function launchGame() {
-  document.getElementById('location-screen').classList.add('hidden');
-  document.getElementById('game-screen').classList.remove('hidden');
-  initMap();
-  renderParty();
-  // If we already have a position, center the map there
-  if (playerPos && map) {
-    map.setView([playerPos.lat, playerPos.lng], 16);
-    updateMapMarker();
-  }
-}
-
-// ── MON FACTORY ─────────────────────────────────────────
-function makeMon(id,name,isShiny,isStarter){
-  const level=isStarter?5:Math.floor(Math.random()*15)+3;
-  const maxHP=20+level*3;
-  return {id,name,isShiny,level,hp:maxHP,maxHP,
-    sprite:isShiny?shinyUrl(id):spriteUrl(id),
-    back:backUrl(id)};
-}
-
-async function randomMon(forceId){
-  const isShiny=Math.random()<0.05;
-  const pool=forceId?null:(Math.random()<0.25?UNCOMMON:COMMON);
-  const id=forceId||(pool[Math.floor(Math.random()*pool.length)]);
-  try{
-    const data=await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`).then(r=>r.json());
-    const name=data.name.charAt(0).toUpperCase()+data.name.slice(1);
-    return makeMon(id,name,isShiny,false);
-  }catch(e){return makeMon(id,'Pokémon',isShiny,false);}
-}
-
-// ── MAP ──────────────────────────────────────────────────
-function initMap(){
-  const startView = playerPos
-    ? [playerPos.lat, playerPos.lng]
-    : [47.6205, -122.3493];
-  map=L.map('map',{zoomControl:false,attributionControl:false}).setView(startView,14);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
-  LANDMARKS.forEach(lm=>{
-    L.marker([lm.lat,lm.lng],{
-      icon:L.divIcon({className:'',html:`<div style="background:#FFD700;color:#000;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;box-shadow:0 2px 6px #0008">⭐ ${lm.name}</div>`,iconAnchor:[40,10]})
-    }).addTo(map);
-  });
-}
-
-function updateMapMarker(){
-  if(!playerPos||!playerParty[activeSlot]||!map) return;
-  const sprite=playerParty[activeSlot].sprite;
-  const icon=L.divIcon({className:'',html:`<img src="${sprite}" style="width:32px;height:32px;image-rendering:pixelated;transform:scaleX(-1);filter:drop-shadow(0 2px 6px #0008)"/>`,iconAnchor:[16,32]});
-  if(!playerMarker){
-    playerMarker=L.marker([playerPos.lat,playerPos.lng],{icon}).addTo(map);
-  } else {
-    playerMarker.setLatLng([playerPos.lat,playerPos.lng]);
-    playerMarker.setIcon(icon);
-  }
-}
-
-// ── LANDMARKS ────────────────────────────────────────────
-function distM(la1,ln1,la2,ln2){
-  const R=6371000,dL=(la2-la1)*Math.PI/180,dG=(ln2-ln1)*Math.PI/180;
-  const a=Math.sin(dL/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dG/2)**2;
-  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-}
-
-function checkLandmarks(lat,lng){
-  LANDMARKS.forEach(lm=>{
-    const d=distM(lat,lng,lm.lat,lm.lng);
-    if(d<LANDMARK_RADIUS_M){
-      playerParty.forEach(m=>m.hp=m.maxHP);
-      renderParty();
-      if(!lm._triggered){
-        lm._triggered=true;
-        setTimeout(()=>lm._triggered=false,BATTLE_COOLDOWN_MS*2);
-        showToast(`⭐ ${lm.name} — Special spawn!`);
-        setTimeout(()=>startEncounter(lm.special),2500);
-      }
-    }
-  });
-}
-
-// ── SPAWN ────────────────────────────────────────────────
-function maybeSpawnEncounter(forceId){
-  if(inBattle) return;
-  const now=Date.now();
-  if(!forceId&&now-lastBattleTime<BATTLE_COOLDOWN_MS) return;
-  lastBattleTime=now;
-  startEncounter(forceId||null);
-}
-
-async function startEncounter(forceId){
-  if(inBattle) return;
-  inBattle=true;
-  wildMon=await randomMon(forceId);
-  wildMaxHP=wildHP=wildMon.maxHP;
-  const active=playerParty[activeSlot];
-  playerMaxHP=active.maxHP;
-  playerHP=active.hp;
-
-  document.getElementById('enc-name').textContent=(wildMon.isShiny?'✨ ':'')+wildMon.name;
-  document.getElementById('enc-meta').textContent=`Lv.${wildMon.level}${wildMon.isShiny?' · Shiny':''}`;
-  document.getElementById('wild-sprite').src=wildMon.sprite;
-  document.getElementById('wild-sprite').className=wildMon.isShiny?'shiny':'';
-  document.getElementById('player-battle-sprite').src=active.back;
-  document.getElementById('wild-label').textContent=wildMon.name;
-  document.getElementById('player-label').textContent=active.name;
-  updateHPBars();
-  setBattleLog(`A wild ${wildMon.name} appeared!${wildMon.isShiny?' It\'s shiny!':''}`);
-  disableBtns(false);
-  document.getElementById('encounter').classList.remove('hidden');
-}
-
-// ── BATTLE ───────────────────────────────────────────────
-function updateHPBars(){
-  const wp=Math.max(0,(wildHP/wildMaxHP)*100);
-  const pp=Math.max(0,(playerHP/playerMaxHP)*100);
-  const wf=document.getElementById('wild-hp-fill');
-  const pf=document.getElementById('player-hp-fill');
-  wf.style.width=wp+'%';pf.style.width=pp+'%';
-  wf.className='hud-fill '+(wp>50?'green':wp>25?'yellow':'red');
-  pf.className='hud-fill '+(pp>50?'green':pp>25?'yellow':'red');
-  document.getElementById('wild-hp-text').textContent=`${Math.max(0,wildHP)}/${wildMaxHP}`;
-  document.getElementById('player-hp-text').textContent=`${Math.max(0,playerHP)}/${playerMaxHP}`;
-}
-
-function setBattleLog(msg){document.getElementById('battle-log').textContent=msg;}
-function disableBtns(d){['btn-attack','btn-catch','btn-run','btn-swap'].forEach(id=>document.getElementById(id).disabled=d);}
-
-async function doAttack(){
-  disableBtns(true);
-  const active=playerParty[activeSlot];
-  const dmg=Math.floor(Math.random()*8)+3+Math.floor(active.level/2);
-  const ps=document.getElementById('player-battle-sprite');
-  ps.classList.add('anim-attack'); await sleep(420); ps.classList.remove('anim-attack');
-  const ws=document.getElementById('wild-sprite');
-  ws.classList.add('anim-shake');
-  wildHP=Math.max(0,wildHP-dmg); updateHPBars();
-  setBattleLog(`${active.name} attacked for ${dmg} damage!`);
-  await sleep(320); ws.classList.remove('anim-shake');
-  if(wildHP<=0){await endBattle('faint');return;}
-  await sleep(400);
-  const wdmg=Math.floor(Math.random()*6)+2;
-  ws.classList.add('anim-attack'); await sleep(300); ws.classList.remove('anim-attack');
-  ps.classList.add('anim-shake');
-  playerHP=Math.max(0,playerHP-wdmg); active.hp=playerHP; updateHPBars();
-  setBattleLog(`${wildMon.name} struck back for ${wdmg}!`);
-  await sleep(320); ps.classList.remove('anim-shake');
-  if(playerHP<=0){await endBattle('fainted');return;}
-  disableBtns(false);
-}
-
-async function doThrowBall(){
-  disableBtns(true);
-  setBattleLog('You threw a Poké Ball!');
-  const ws=document.getElementById('wild-sprite');
-  ws.classList.add('anim-flash'); await sleep(1300); ws.classList.remove('anim-flash');
-  const hpBonus=1-(wildHP/wildMaxHP)*0.3;
-  const rate=Math.min(0.95,CATCH_BASE_RATE*hpBonus);
-  if(Math.random()<rate){
-    ws.style.animation='catchAnim .6s ease forwards';
-    await sleep(700);
-    await endBattle('caught');
-  } else {
-    setBattleLog(`${wildMon.name} broke free!`);
-    await sleep(700);
-    const wdmg=Math.floor(Math.random()*5)+2;
-    const active=playerParty[activeSlot];
-    playerHP=Math.max(0,playerHP-wdmg); active.hp=playerHP; updateHPBars();
-    setBattleLog(`${wildMon.name} is angry! Hit for ${wdmg}!`);
-    await sleep(500);
-    if(playerHP<=0){await endBattle('fainted');return;}
-    disableBtns(false);
-  }
-}
-
-async function doRun(){
-  setBattleLog('Got away safely!'); await sleep(700); closeBattle();
-}
-
-async function endBattle(result){
-  if(result==='caught'){
-    caughtList.push(wildMon);
-    if(playerParty.length<6) playerParty.push({...wildMon,hp:wildMon.maxHP});
-    document.getElementById('encounter').classList.add('hidden');
-    document.getElementById('caught-img').src=wildMon.sprite;
-    document.getElementById('caught-msg').textContent=`${wildMon.name} was added to your party!${wildMon.isShiny?' ✨ Shiny!':''}`;
-    document.getElementById('caught-popup').classList.remove('hidden');
-    renderParty();
-  } else if(result==='faint'){
-    setBattleLog(`Wild ${wildMon.name} fainted!`); await sleep(1000); closeBattle();
-  } else if(result==='fainted'){
-    setBattleLog(`${playerParty[activeSlot].name} fainted!`); await sleep(900);
-    let next=playerParty.findIndex((m,i)=>i!==activeSlot&&m.hp>0);
-    if(next!==-1){
-      activeSlot=next;
-      const a=playerParty[activeSlot];
-      playerHP=a.hp; playerMaxHP=a.maxHP;
-      document.getElementById('player-battle-sprite').src=a.back;
-      document.getElementById('player-label').textContent=a.name;
-      updateHPBars();
-      setBattleLog(`Go, ${a.name}!`); await sleep(700);
-      disableBtns(false);
-    } else {
-      setBattleLog('All Pokémon fainted!'); await sleep(1000);
-      document.getElementById('encounter').classList.add('hidden');
-      inBattle=false;
-      showFaintScreen();
-    }
-  }
-}
-
-function closeBattle(){
-  document.getElementById('encounter').classList.add('hidden');
-  document.getElementById('wild-sprite').style.animation='';
-  inBattle=false; lastBattleTime=Date.now();
-  renderParty(); updateMapMarker();
-}
-
-// ── FAINT COUNTDOWN ──────────────────────────────────────
-function showFaintScreen(){
-  const screen=document.getElementById('faint-screen');
-  const timerEl=document.getElementById('faint-timer');
-  screen.classList.remove('hidden');
-  let secs=FAINT_RECOVER_SECS;
-  timerEl.textContent=secs;
-  const iv=setInterval(()=>{
-    secs--;
-    timerEl.textContent=secs;
-    if(secs<=0){
-      clearInterval(iv);
-      playerParty.forEach(m=>m.hp=m.maxHP);
-      activeSlot=0;
-      screen.classList.add('hidden');
-      lastBattleTime=Date.now();
-      renderParty(); updateMapMarker();
-    }
-  },1000);
-}
-
-// ── PARTY UI ────────────────────────────────────────────
-function renderParty(){
-  const g=document.getElementById('party-grid');
-  g.innerHTML='';
-  playerParty.forEach((mon,i)=>{
-    const pct=(mon.hp/mon.maxHP)*100;
-    const card=document.createElement('div');
-    card.className='party-card'+(i===activeSlot?' active':'')+(mon.hp<=0?' fainted':'');
-    card.innerHTML=`<img src="${mon.sprite}" alt="${mon.name}"/><div class="pname">${mon.isShiny?'✨ ':''}${mon.name}</div><div class="hp-bar"><div class="hp-fill" style="width:${pct}%;background:${pct>50?'#1D9E75':pct>25?'#EF9F27':'#e24b4a'}"></div></div>`;
-    card.onclick=()=>{if(mon.hp>0){activeSlot=i;renderParty();updateMapMarker();}};
-    g.appendChild(card);
-  });
-}
-
-// ── TOAST ────────────────────────────────────────────────
-function showToast(msg){
-  const t=document.getElementById('node-toast');
-  t.textContent=msg; t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),3000);
-}
-
-// ── BLE ──────────────────────────────────────────────────
-const MESH_SVC  ='6ba1b218-15a8-461f-9fa8-5dcae273eafd';
-const FROM_CHAR ='2c55e69e-4993-11ed-b878-0242ac120002';
-const FNUM_CHAR ='ed9da18c-a800-4f66-a670-aa7547e34453';
-const TO_CHAR   ='f75c76d2-129e-4dad-a1dd-7866124401e7';
-
-async function connectBLE(){
-  const btn=document.getElementById('ble-btn');
-  btn.textContent='Connecting...'; btn.disabled=true;
-  try{
-    device=await navigator.bluetooth.requestDevice({filters:[{services:[MESH_SVC]}],optionalServices:[MESH_SVC]})
-      .catch(()=>navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[MESH_SVC]}));
-    server=await device.gatt.connect(); await sleep(600);
-    const svc=await server.getPrimaryService(MESH_SVC);
-    fromRadioChar=await svc.getCharacteristic(FROM_CHAR);
-    fromNumChar  =await svc.getCharacteristic(FNUM_CHAR);
-    toRadioChar  =await svc.getCharacteristic(TO_CHAR);
-    await fromNumChar.startNotifications();
-    fromNumChar.addEventListener('characteristicvaluechanged',onPacket);
-    bleConnected=true;
-    btn.textContent='🔵 Connected'; btn.classList.add('connected'); btn.disabled=false;
-    showToast('📡 Meshtastic connected!');
-    device.addEventListener('gattserverdisconnected',()=>{
-      bleConnected=false; btn.textContent='🔵 Connect BLE';
-      btn.classList.remove('connected'); btn.disabled=false;
-    });
-  }catch(e){btn.textContent='🔵 Connect BLE'; btn.disabled=false;}
-}
-
-async function onPacket(){
-  try{
-    const val=await fromRadioChar.readValue();
-    if(!val||val.byteLength<2) return;
-    const bytes=new Uint8Array(val.buffer);
-    const view=new DataView(val.buffer);
-    let nodeId=null;
-    for(let off of [4,0,8]){
-      if(bytes.length>=off+4){const c=view.getUint32(off,false);if(c>0x10000&&c!==0xFFFFFFFF){nodeId=c;break;}}
-    }
-    if(nodeId&&!knownNodes[nodeId]){
-      knownNodes[nodeId]=true;
-      document.getElementById('node-num').textContent=Object.keys(knownNodes).length;
-      showToast('📡 New node! Wild Pokémon incoming...');
-      setTimeout(()=>maybeSpawnEncounter(),3000);
-    }
-  }catch(e){}
-}
-
-async function requestNodes(){
-  if(!bleConnected||!toRadioChar) return;
-  try{await toRadioChar.writeValue(new Uint8Array([0x18,0x01]));}catch(e){}
-}
-
-async function drainBuffer(){
-  if(!bleConnected||!fromRadioChar) return;
-  let empty=0;
-  while(empty<3){
-    try{const v=await fromRadioChar.readValue();if(!v||v.byteLength===0){empty++;}else{empty=0;onPacket();}}
-    catch(e){empty++;}
-    await sleep(150);
-  }
-}
-
-// ── EVENTS ───────────────────────────────────────────────
-document.getElementById('ble-btn').onclick   =connectBLE;
-document.getElementById('btn-scan').onclick  =requestNodes;
-document.getElementById('btn-drain').onclick =drainBuffer;
-document.getElementById('btn-attack').onclick=doAttack;
-document.getElementById('btn-catch').onclick =doThrowBall;
-document.getElementById('btn-run').onclick   =doRun;
-document.getElementById('btn-swap').onclick  =()=>{
-  let next=(activeSlot+1)%playerParty.length,tries=0;
-  while(playerParty[next].hp<=0&&tries<playerParty.length){next=(next+1)%playerParty.length;tries++;}
-  if(tries>=playerParty.length){setBattleLog('No other Pokémon available!');return;}
-  activeSlot=next;
-  const a=playerParty[activeSlot];
-  playerHP=a.hp; playerMaxHP=a.maxHP;
-  document.getElementById('player-battle-sprite').src=a.back;
-  document.getElementById('player-label').textContent=a.name;
-  updateHPBars(); setBattleLog(`Go, ${a.name}!`); renderParty();
-};
-document.getElementById('caught-ok').onclick=()=>{
-  document.getElementById('caught-popup').classList.add('hidden');
-  inBattle=false; lastBattleTime=Date.now();
-  renderParty(); updateMapMarker();
-};
-</script>
-</body>
-</html>
