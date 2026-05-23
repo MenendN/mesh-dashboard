@@ -1,3 +1,7 @@
+
+
+raw
+Index · HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -32,40 +36,40 @@
   </style>
 </head>
 <body>
-
+ 
   <h1>PokéMesh Scanner</h1>
   <p class="subtitle">Discovers nearby Meshtastic nodes via Bluetooth</p>
-
+ 
   <div class="status-row">
     <div class="dot" id="dot"></div>
     <span id="status-text">Disconnected</span>
   </div>
-
+ 
   <button id="connect-btn">&#x1F4F6; Connect to Meshtastic</button>
-
+ 
   <div class="section-header">
     <span class="section-title">Discovered Nodes</span>
     <span class="count" id="count">0 found</span>
   </div>
-
+ 
   <div id="node-list">
     <div class="empty" id="empty-state">
       <div class="empty-icon">&#x1F4E1;</div>
       Connect to start scanning
     </div>
   </div>
-
+ 
   <div class="log" id="log"></div>
-
+ 
 <script>
   const MESHTASTIC_SERVICE = '6ba1b218-15a8-461f-9fa8-5d6e91588c8a';
   const FROMRADIO_CHAR    = '2c55cbb9-5b76-4a30-95af-a62fc1f7e5d9';
   const FROMNUM_CHAR      = 'ed9da18c-a800-4f66-a670-aa7547e34453';
-
+ 
   let nodes = {};
   let connected = false;
   let device, server, fromRadioChar, fromNumChar;
-
+ 
   const log = (msg, highlight) => {
     const el = document.getElementById('log');
     const line = document.createElement('div');
@@ -74,7 +78,7 @@
     el.appendChild(line);
     el.scrollTop = el.scrollHeight;
   };
-
+ 
   const setStatus = (text, state) => {
     document.getElementById('status-text').textContent = text;
     const dot = document.getElementById('dot');
@@ -82,18 +86,18 @@
     if (state === 'green') dot.classList.add('green');
     if (state === 'amber') dot.classList.add('amber');
   };
-
+ 
   const addNode = (id, name, snr) => {
     if (nodes[id]) return;
     nodes[id] = true;
-
+ 
     document.getElementById('empty-state')?.remove();
     const keys = Object.keys(nodes).length;
     document.getElementById('count').textContent = keys + ' found';
-
+ 
     const shortId = id.toString(16).toUpperCase().padStart(8,'0').slice(-4);
     const snrText = snr !== undefined ? 'SNR: ' + snr + ' dB' : '';
-
+ 
     const card = document.createElement('div');
     card.className = 'node-card';
     card.innerHTML =
@@ -105,15 +109,15 @@
     document.getElementById('node-list').appendChild(card);
     log('New node: ' + (name || '!' + shortId), true);
   };
-
+ 
   const parsePacket = (buffer) => {
     try {
       const bytes = new Uint8Array(buffer);
       if (bytes.length < 4) return;
-
+ 
       let name = '';
       let nodeId = null;
-
+ 
       for (let i = 0; i < bytes.length - 3; i++) {
         if (bytes[i] >= 32 && bytes[i] < 127) {
           let str = '';
@@ -124,30 +128,30 @@
           if (str.length >= 3 && !name) name = str;
         }
       }
-
+ 
       const view = new DataView(buffer);
       if (bytes.length >= 8) {
         nodeId = view.getUint32(4, false);
         if (nodeId === 0 || nodeId === 0xFFFFFFFF) nodeId = null;
       }
-
+ 
       if (!nodeId) {
         nodeId = Math.abs(hashStr(name || 'node' + Date.now()));
       }
-
+ 
       log('Packet ' + bytes.length + ' bytes' + (name ? ' name:' + name : ''));
       addNode(nodeId, name || null, undefined);
     } catch(e) {
       log('Parse error: ' + e.message);
     }
   };
-
+ 
   const hashStr = (s) => {
     let h = 0;
     for (let i = 0; i < s.length; i++) h = Math.imul(31, h) + s.charCodeAt(i) | 0;
     return h;
   };
-
+ 
   const readFromRadio = async () => {
     try {
       const val = await fromRadioChar.readValue();
@@ -156,41 +160,41 @@
       log('Read error: ' + e.message);
     }
   };
-
+ 
   document.getElementById('connect-btn').addEventListener('click', async () => {
     if (connected) return;
     try {
       log('Requesting Bluetooth device...');
       setStatus('Connecting...', 'amber');
-
+ 
       device = await navigator.bluetooth.requestDevice({
         filters: [{ services: [MESHTASTIC_SERVICE] }],
         optionalServices: [MESHTASTIC_SERVICE]
       });
-
+ 
       log('Found: ' + device.name);
       server = await device.gatt.connect();
       log('GATT connected');
-
+ 
       const service = await server.getPrimaryService(MESHTASTIC_SERVICE);
       fromRadioChar = await service.getCharacteristic(FROMRADIO_CHAR);
       fromNumChar   = await service.getCharacteristic(FROMNUM_CHAR);
-
+ 
       await fromNumChar.startNotifications();
       fromNumChar.addEventListener('characteristicvaluechanged', readFromRadio);
-
+ 
       connected = true;
       setStatus('Connected to ' + device.name, 'green');
-
+ 
       const btn = document.getElementById('connect-btn');
       btn.textContent = 'Connected';
       btn.disabled = true;
-
+ 
       const empty = document.getElementById('empty-state');
       if (empty) empty.innerHTML = '<div class="empty-icon">&#x1F4E1;</div>Scanning for nodes...';
-
+ 
       log('Listening for nodes...');
-
+ 
       device.addEventListener('gattserverdisconnected', () => {
         connected = false;
         setStatus('Disconnected', '');
@@ -199,7 +203,7 @@
         btn.textContent = '📶 Reconnect';
         btn.disabled = false;
       });
-
+ 
     } catch(e) {
       log('Error: ' + e.message);
       setStatus('Disconnected', '');
